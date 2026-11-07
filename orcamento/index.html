@@ -777,7 +777,7 @@ function layoutCyl(){
   rimTex.repeat.set(Math.PI*d.T/TILE,0.1); lidPaperTex.repeat.set(d.T/TILE,1); cupInnerTex.repeat.set(Math.PI*d.T/TILE,d.H/TILE);
   const drop=Math.max(70,d.H*0.9);
   const off=lidOffset(drop);
-  cupLid.visible=lidT>0.002;
+  cupLid.visible=st.lid||lidT>0.002;
   cupLid.position.set(0,(d.H+off)*S,0);
   cupLid.rotation.z=(off/drop)*0.35; cupLid.rotation.x=(off/drop)*0.15;
   blob.scale.set(d.B*1.9*S,d.B*1.9*S,1);
@@ -1037,9 +1037,9 @@ function bbox(){
   if(m==='batata') return {W:d.W,D:d.D,H:d.H*1.25};
   if(m==='sushi'||m==='salgado'||m==='pizza') return {W:d.W,D:d.D+2*T,H:d.H+(st.open?d.D*0.75:0)};
   if(m==='sacola') return {W:d.W,D:d.D,H:d.H+(st.bagType==='sos'?0:Math.min(d.W*0.42,110))};
-  return {W:d.T+6,D:d.T+6,H:d.H+(st.lid?12:3)};
+  return {W:d.T+6,D:d.T+6,H:d.H+(st.lid?(st.open?Math.max(70,d.H*0.9)+14:12):3)};
 }
-function lidTarget(){ if(st.model==='caixa') return st.open?0:1; if(isCyl(st.model)) return st.lid?1:0; return 0; }
+function lidTarget(){ if(st.model==='caixa') return st.open?0:1; if(isCyl(st.model)) return (st.lid&&!st.open)?1:0; return 0; }
 function layout(){
   const m=st.model, tray=(m==='sushi'||m==='salgado'||m==='pizza');
   cartRig.visible=m==='cartucho'; cxRig.visible=m==='caixa'; cupRig.visible=isCyl(m); hambRig.visible=m==='hamb'; friesRig.visible=m==='batata'; trayRig.visible=tray; bagRig.visible=m==='sacola';
@@ -1314,13 +1314,14 @@ function updatePanel(){
   document.querySelectorAll('[data-model]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.model===m));
   $('lidColorRow').hidden=m!=='copo';
   $('lidTip').textContent=m==='copo'?'Tampa plástica com bico, para bebidas quentes e frias.':'Tampa de papel com a mesma impressão do pote.';
-  $('btnOpen').style.display=(HINGED.includes(m)||m==='caixa')?'':'none';
+  $('btnOpen').style.display=(HINGED.includes(m)||m==='caixa'||(cyl&&st.lid))?'':'none';
   $('btnDims').style.display=cyl?'none':''; if(cyl&&!st.dims){st.dims=true;$('btnDims').setAttribute('aria-pressed','true');}
-  $('btnOpen').querySelector('.lbl').textContent=st.open?'Fechar tampa':'Abrir tampa'; $('btnOpen').setAttribute('aria-pressed',st.open);
+  $('btnOpen').querySelector('.lbl').textContent=openLabel(); $('btnOpen').setAttribute('aria-pressed',st.open);
   document.querySelector('[data-view="edge"]').style.display=(!cyl&&subKey()!=='cartao')?'':'none';
   document.querySelectorAll('[data-lid]').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.lid==='1')===st.lid));
   buildSizes(); syncInputs();
 }
+function openLabel(){ if(isCyl(st.model)) return st.open?'Colocar tampa':'Tirar tampa'; return st.open?'Fechar tampa':'Abrir tampa'; }
 function refresh(){summary(); if(dieOn)dieline();}
 function setDim(k,v,cyl){
   const m=st.model, r=$((cyl?'rc':'rb')+k), n=$((cyl?'nc':'nb')+k);
@@ -1354,9 +1355,9 @@ group('[data-flute]','flute',v=>{st.flute=v;applySubstrate(); if(!dieOn)setView(
 group('[data-faces]','faces',v=>{st.faces=v;applySubstrate();});
 group('[data-fin]','fin',v=>{st.fin=v;applyFinish();});
 group('[data-q]','q',v=>{st.q=+v;});
-group('[data-lid]','lid',v=>{const on=v==='1'; if(on&&!st.lid){lidT=0;} st.lid=on; lidClosing=on; framing=true; if(on&&!dieOn&&!viewAnim)setView('34');});
+group('[data-lid]','lid',v=>{const on=v==='1'; if(on&&!st.lid){lidT=0;} st.lid=on; st.open=false; lidClosing=on; framing=true; updatePanel(); if(on&&!dieOn&&!viewAnim)setView('34');});
 group('[data-lidc]','lidc',v=>{st.lidColor=v;cylKey='';});
-$('btnOpen').addEventListener('click',e=>{st.open=!st.open; lidClosing=!st.open; e.currentTarget.setAttribute('aria-pressed',st.open);e.currentTarget.querySelector('.lbl').textContent=st.open?'Fechar tampa':'Abrir tampa'; framing=true;});
+$('btnOpen').addEventListener('click',e=>{st.open=!st.open; lidClosing=!st.open; e.currentTarget.setAttribute('aria-pressed',st.open);e.currentTarget.querySelector('.lbl').textContent=openLabel(); framing=true;});
 $('btnDims').addEventListener('click',e=>{st.dims=!st.dims;e.currentTarget.setAttribute('aria-pressed',st.dims);});
 $('btnRot').addEventListener('click',()=>{st.rot=!st.rot;controls.autoRotate=st.rot;$('btnRot').setAttribute('aria-pressed',st.rot);viewAnim=null;});
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{if(dieOn)showTab(false);setView(b.dataset.view);}));
