@@ -219,10 +219,10 @@ input[type=range]{width:100%;accent-color:var(--y);height:28px}
     <section class="sec" data-for="copo pote caixa">
       <div class="sh"><span class="num"></span>Capacidade</div>
       <div class="chips" id="sizes"></div>
-      <p class="tip">Tamanhos de referência. Entram aqui as medidas oficiais da linha MXM.</p>
+      <p class="tip" data-captip>Escolha a capacidade da embalagem.</p>
     </section>
 
-    <section class="sec">
+    <section class="sec" data-for="cartucho caixa hamb batata sushi salgado pizza sacola">
       <div class="sh"><span class="num"></span><span id="dimTitle">Medidas externas</span></div>
       <div id="dimsBox" class="subopts">
         <div class="dim">
@@ -1082,10 +1082,8 @@ function updateDims(){
     if(m==='caixa'){capLab.style.display='block'; place(capLab,[0,bbox().H+28,0],'',st.size.caixa?(st.size.caixa+' L'):'≈ '+fmtL(boxVol(d)));} else capLab.style.display='none';
   } else {
     const rt=d.T/2, rb=d.B/2, H=d.H, yT=H+(lidT>0.5?18:10), zb=rb+12, xr=rt+12;
-    seg([-rt,yT,0],[rt,yT,0]); seg([-rt,yT-k,0],[-rt,yT+k,0]); seg([rt,yT-k,0],[rt,yT+k,0]);
-    seg([-rb,0,zb],[rb,0,zb]); seg([-rb,0,zb-k],[-rb,0,zb+k]); seg([rb,0,zb-k],[rb,0,zb+k]);
-    seg([xr,0,0],[xr,H,0]); seg([xr-k,0,0],[xr+k,0,0]); seg([xr-k,H,0],[xr+k,H,0]);
-    place(lab.W,[0,yT+9,0],'Ø boca',Math.round(d.T)+' mm'); place(lab.D,[0,0,zb+12],'Ø fundo',Math.round(d.B)+' mm'); place(lab.H,[xr+14,H/2,0],'A',Math.round(H)+' mm');
+    for(let q=0;q<9;q++) seg([0,0,0],[0,0,0]);
+    [lab.W,lab.D,lab.H].forEach(el=>el.style.display='none');
     capLab.style.display='block'; place(capLab,[0,yT+32,0],'',st.size[m]?(st.size[m]+' ml'):'≈ '+fmtMl(cylVol(m,d)));
   }
   dimGeo.attributes.position.needsUpdate=true;
@@ -1273,7 +1271,7 @@ function dieline(){
 function capacityText(){
   const m=st.model, d=st.D[m];
   const n=st.size[m];
-  if(isCyl(m)) return n?(n+' ml (até a borda ≈ '+fmtMl(cylVol(m,d))+')'):'≈ '+fmtMl(cylVol(m,d));
+  if(isCyl(m)) return n?(n+' ml'):'≈ '+fmtMl(cylVol(m,d));
   if(m==='caixa') return n?(n+' L (volume interno ≈ '+fmtL(boxVol(d))+')'):'≈ '+fmtL(boxVol(d));
   return '';
 }
@@ -1283,7 +1281,7 @@ function summary(){
   else if(m==='caixa') t='Caixa de açaí com tampa (tampa e fundo) · '+capacityText()+'\n'+d.W+' × '+d.D+' × '+d.H+' mm (L × P × A)\n'+matLabel()+'\nAcabamento: '+LABELS.fin[st.fin];
   else if(m==='sacola') t=(st.bagType==='sos'?'Sacola delivery (sem alça, topo serrilhado)':'Sacola com alça '+({torcido:'de papel torcido',chato:'de papel chata',cordao:'de cordão '+{black:'preto',white:'branco',yellow:'amarelo',pink:'rosa'}[st.cord]+' com ilhós '+{gold:'dourado',silver:'prateado',black:'preto'}[st.eyelet]}[st.handle]))+'\n'+d.W+' × '+d.D+' × '+d.H+' mm (L × P × A)\n'+matLabel()+'\nAcabamento: '+LABELS.fin[st.fin];
   else if(!isCyl(m)) t=NAMES[m]+((m==='sushi'||m==='salgado')&&st.visor?' · com visor (janela)':'')+'\n'+d.W+' × '+d.D+' × '+d.H+' mm (L × P × A)\n'+matLabel()+'\nAcabamento: '+LABELS.fin[st.fin];
-  else t=(m==='copo'?'Copo de papel':'Pote de papel para açaí e sorvete')+' · '+capacityText()+'\nØ boca '+d.T+' mm · Ø fundo '+d.B+' mm · altura '+d.H+' mm\n'+matLabel()+' · '+LABELS.fin[st.fin]+'\n'+(st.lid?(m==='copo'?'Com tampa '+(st.lidColor==='black'?'preta':'branca'):'Com tampa de papel impressa'):'Sem tampa');
+  else t=(m==='copo'?'Copo de papel':'Pote de papel para açaí e sorvete')+' · '+capacityText()+'\n'+matLabel()+' · '+LABELS.fin[st.fin]+'\n'+(st.lid?(m==='copo'?'Com tampa '+(st.lidColor==='black'?'preta':'branca'):'Com tampa de papel impressa'):'Sem tampa');
   if(!isCyl(m)){const fx=[]; if(st.fx.hot)fx.push('hot stamping '+{gold:'dourado',silver:'prateado',copper:'cobre'}[st.foil]); if(st.fx.spot)fx.push('verniz localizado'); if(st.fx.relevo)fx.push('alto relevo'); if(fx.length)t+='\nEfeitos no logo: '+fx.join(' + ');}
   t+='\nQuantidade: '+st.q.toLocaleString('pt-BR')+(st.q===20000?'+':'')+' un.';
   const el=$('sum'); el.textContent=''; t.split('\n').forEach((l,i)=>{if(i)el.appendChild(document.createElement('br'));el.appendChild(document.createTextNode(l));});
@@ -1317,6 +1315,7 @@ function updatePanel(){
   $('lidColorRow').hidden=m!=='copo';
   $('lidTip').textContent=m==='copo'?'Tampa plástica com bico, para bebidas quentes e frias.':'Tampa de papel com a mesma impressão do pote.';
   $('btnOpen').style.display=(HINGED.includes(m)||m==='caixa')?'':'none';
+  $('btnDims').style.display=cyl?'none':''; if(cyl&&!st.dims){st.dims=true;$('btnDims').setAttribute('aria-pressed','true');}
   $('btnOpen').querySelector('.lbl').textContent=st.open?'Fechar tampa':'Abrir tampa'; $('btnOpen').setAttribute('aria-pressed',st.open);
   document.querySelector('[data-view="edge"]').style.display=(!cyl&&subKey()!=='cartao')?'':'none';
   document.querySelectorAll('[data-lid]').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.lid==='1')===st.lid));
