@@ -630,9 +630,15 @@ const lidPivot=new THREE.Group(), lid=rigMesh({thin:'y',outer:1,F:'z'}), tongueP
 lidPivot.add(lid); lidPivot.add(tonguePivot); tonguePivot.add(tongue);
 const dL=new THREE.Group(), dLm=rigMesh({thin:'y',outer:0,F:'z'}); dL.add(dLm);
 const dR=new THREE.Group(), dRm=rigMesh({thin:'y',outer:0,F:'z'}); dR.add(dRm);
+const bLidPivot=new THREE.Group(), bLid=rigMesh({thin:'y',outer:-1,F:'z'}), bTonguePivot=new THREE.Group(), bTongue=rigMesh({thin:'y',outer:-1,F:'z'});
+bLid.material[3]=botUnder; bLid.userData.faces[3]={kind:'none'};
+bLidPivot.add(bLid); bLidPivot.add(bTonguePivot); bTonguePivot.add(bTongue);
+const dLb=new THREE.Group(), dLbm=rigMesh({thin:'y',outer:0,F:'z'}); dLb.add(dLbm);
+const dRb=new THREE.Group(), dRbm=rigMesh({thin:'y',outer:0,F:'z'}); dRb.add(dRbm);
+let cartLift=0;
 const logoFront=decal(logoMat), infoBack=decal(infoMat), logoSide=decal(logoMat);
 infoBack.rotation.y=Math.PI; logoSide.rotation.set(0,Math.PI/2,Math.PI/2);
-cartRig.add(front,back,left,right,bottom,lidPivot,dL,dR,logoFront,infoBack,logoSide);
+cartRig.add(front,back,left,right,bottom,lidPivot,dL,dR,bLidPivot,dLb,dRb,logoFront,infoBack,logoSide);
 function layoutCart(){
   const d=cur.cartucho, W=d.W,D=d.D,H=d.H,t=T;
   front.scale.set(W*S,H*S,t*S); front.position.set(0,H/2*S,(D/2-t/2)*S);
@@ -653,6 +659,21 @@ function layoutCart(){
   tonguePivot.rotation.x=THREE.MathUtils.degToRad(90)*(1-a);
   dL.rotation.z= b*THREE.MathUtils.degToRad(100);
   dR.rotation.z=-b*THREE.MathUtils.degToRad(100);
+  // bottom: tuck end opens too (box lifts so the bottom can swing open)
+  const tuck=st.closure==='tuck';
+  bottom.visible=!tuck; [bLidPivot,dLb,dRb].forEach(o=>o.visible=tuck);
+  bLidPivot.position.set(0,0,(D/2)*S);
+  bLid.scale.set(W*S,t*S,D*S); bLid.position.set(0,t/2*S,-D/2*S);
+  bTonguePivot.position.set(0,t/2*S,-(D-t)*S);
+  bTongue.scale.set((W-3)*S,t*S,tl*S); bTongue.position.set(0,0,-tl/2*S);
+  dLb.position.set((-W/2+t)*S,(t*1.2)*S,0); dLbm.scale.set(fl*S,t*S,(D-4)*S); dLbm.position.set(fl/2*S,0,0);
+  dRb.position.set((W/2-t)*S,(t*1.2)*S,0); dRbm.scale.set(fl*S,t*S,(D-4)*S); dRbm.position.set(-fl/2*S,0,0);
+  bLidPivot.rotation.x=-a*THREE.MathUtils.degToRad(118);
+  bTonguePivot.rotation.x=THREE.MathUtils.degToRad(90)*(1-a);
+  dLb.rotation.z=-b*THREE.MathUtils.degToRad(100);
+  dRb.rotation.z= b*THREE.MathUtils.degToRad(100);
+  cartLift=tuck?ease(openness)*(D+tl+12):0;
+  cartRig.position.y=cartLift*S;
   const lw=Math.min(W*0.66,H*0.95), e=0.05;
   logoFront.scale.set(lw*S,lw*340/1024*S,1); logoFront.position.set(0,H*0.56*S,(D/2+e)*S);
   const iw=Math.min(W*0.72,H*0.5*0.8); infoBack.scale.set(iw*S,iw*1.25*S,1); infoBack.position.set(0,H*0.45*S,(-D/2-e)*S);
@@ -1031,7 +1052,7 @@ function applyEffects(){
 /* ---------- model switching ---------- */
 function bbox(){
   const m=st.model, d=cur[m];
-  if(m==='cartucho') return {W:d.W,D:d.D,H:d.H};
+  if(m==='cartucho') return {W:d.W,D:d.D,H:d.H+cartLift+(st.open?d.D*0.9:0)};
   if(m==='caixa') return {W:d.W+2*T,D:d.D+2*T,H:d.H+T+(st.open?80:0)};
   if(m==='hamb') return {W:d.W,D:d.D,H:d.H+(st.open?d.D*0.6:0)};
   if(m==='batata') return {W:d.W,D:d.D,H:d.H*1.25};
@@ -1074,11 +1095,11 @@ function updateDims(){
   const place=(el,p,tag,txt)=>{v.set(p[0]*S,p[1]*S,p[2]*S).project(camera);el.style.transform='translate('+((v.x+1)/2*r.width)+'px,'+((1-v.y)/2*r.height)+'px) translate(-50%,-50%)';if(el.firstChild.tagName==='SPAN')el.firstChild.textContent=tag;el.lastChild.textContent=txt;};
   const k=4;
   if(!isCyl(m)){
-    const W=d.W+(m==='caixa'?2*T:0),D=d.D+(m==='caixa'?2*T:0),H=d.H,o=10, zf=D/2+o, xr=W/2+o;
-    seg([-W/2,0,zf],[W/2,0,zf]); seg([-W/2,0,zf-k],[-W/2,0,zf+k]); seg([W/2,0,zf-k],[W/2,0,zf+k]);
-    seg([xr,0,-D/2],[xr,0,D/2]); seg([xr-k,0,-D/2],[xr+k,0,-D/2]); seg([xr-k,0,D/2],[xr+k,0,D/2]);
-    seg([xr,0,zf],[xr,H,zf]); seg([xr-k,0,zf],[xr+k,0,zf]); seg([xr-k,H,zf],[xr+k,H,zf]);
-    place(lab.W,[0,0,zf+12],'L',Math.round(d.W)+' mm'); place(lab.D,[xr+12,0,0],'P',Math.round(d.D)+' mm'); place(lab.H,[xr+10,H/2,zf+10],'A',Math.round(H)+' mm');
+    const W=d.W+(m==='caixa'?2*T:0),D=d.D+(m==='caixa'?2*T:0),H=d.H,o=10, zf=D/2+o, xr=W/2+o, ly=(m==='cartucho'?cartLift:0);
+    seg([-W/2,ly,zf],[W/2,ly,zf]); seg([-W/2,ly,zf-k],[-W/2,ly,zf+k]); seg([W/2,ly,zf-k],[W/2,ly,zf+k]);
+    seg([xr,ly,-D/2],[xr,ly,D/2]); seg([xr-k,ly,-D/2],[xr+k,ly,-D/2]); seg([xr-k,ly,D/2],[xr+k,ly,D/2]);
+    seg([xr,ly,zf],[xr,ly+H,zf]); seg([xr-k,ly,zf],[xr+k,ly,zf]); seg([xr-k,ly+H,zf],[xr+k,ly+H,zf]);
+    place(lab.W,[0,ly,zf+12],'L',Math.round(d.W)+' mm'); place(lab.D,[xr+12,ly,0],'P',Math.round(d.D)+' mm'); place(lab.H,[xr+10,ly+H/2,zf+10],'A',Math.round(H)+' mm');
     if(m==='caixa'){capLab.style.display='block'; place(capLab,[0,bbox().H+28,0],'',st.size.caixa?(st.size.caixa+' L'):'≈ '+fmtL(boxVol(d)));} else capLab.style.display='none';
   } else {
     const rt=d.T/2, rb=d.B/2, H=d.H, yT=H+(lidT>0.5?18:10), zb=rb+12, xr=rt+12;
