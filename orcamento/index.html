@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MXM — Orçamento online com embalagem em 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0D0D0D;--panel:#141414;--card:#1C1C1C;--line:rgba(255,255,255,.1);--txt:#fff;--mut:#B5B5B5;--y:#FFC21A;--c:#1FA2F0;--m:#E6179B}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+button,input{font-family:inherit}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 430px;height:100vh}
+.stage{position:relative;overflow:hidden;background:radial-gradient(110% 85% at 50% 38%,#3b3a38 0%,#1e1e1d 48%,#0d0d0d 100%)}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.topbar{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;pointer-events:none}
+.topbar>*{pointer-events:auto}
+.logo{display:flex;align-items:center;gap:1px;font-weight:800;font-size:28px;letter-spacing:-1px;line-height:1;color:#fff;text-decoration:none}
+.tabs{display:flex;gap:4px;padding:4px;border-radius:999px;background:rgba(0,0,0,.45);border:1px solid var(--line);backdrop-filter:blur(12px)}
+.tab{min-height:40px;padding:0 18px;border-radius:999px;border:0;background:transparent;color:#E6E6E6;font-weight:600;font-size:14px;cursor:pointer}
+.tab[aria-selected="true"]{background:#fff;color:#0D0D0D}
+.toolbar{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:4px;padding:6px;border-radius:999px;background:rgba(0,0,0,.5);border:1px solid var(--line);backdrop-filter:blur(12px);max-width:calc(100% - 24px)}
+.tb{flex:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border-radius:999px;border:0;background:transparent;color:#E6E6E6;font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap}
+.tb:hover{background:rgba(255,255,255,.08)}
+.tb[aria-pressed="true"]{background:rgba(255,194,26,.16);color:var(--y)}
+.tb svg{flex:none}
+.sep{width:1px;background:var(--line);margin:8px 2px}
+.dimlabel{position:absolute;left:0;top:0;pointer-events:none;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#0D0D0D;background:var(--c);padding:3px 8px;border-radius:6px;white-space:nowrap;transform:translate(-50%,-50%);box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.dimlabel span{opacity:.65;margin-right:5px}
+.hint{position:absolute;left:20px;top:74px;font-size:12px;color:#9a9a9a;font-family:'JetBrains Mono',monospace;pointer-events:none}
+#dieWrap{position:absolute;inset:0;display:none;padding:84px 24px 96px;background:#0F0F0F}
+#dieWrap.on{display:flex;flex-direction:column;gap:12px}
+#dieSvg{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+#dieSvg svg{width:100%;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;font-size:13px;color:var(--mut)}
+.legend i{display:inline-block;width:26px;height:0;vertical-align:middle;margin-right:8px;border-top:2px solid #fff}
+.legend i.f{border-top:2px dashed var(--y)}
+.legend i.g{height:12px;border:1px solid var(--c);background:repeating-linear-gradient(45deg,rgba(31,162,240,.5) 0 2px,transparent 2px 6px)}
+.note{text-align:center;font-size:12px;color:#8f8f8f}
+
+.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;display:flex;flex-direction:column}
+.ph{padding:24px 24px 8px}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--c)}
+.ph h1{margin:6px 0 0;font-size:24px;line-height:1.2;letter-spacing:-.4px}
+.sec{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:12px}
+.sh{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px}
+.num{width:24px;height:24px;border-radius:50%;background:var(--y);color:#0D0D0D;font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:transparent;color:#E6E6E6;font-weight:600;font-size:14px;cursor:pointer}
+.chip[aria-pressed="true"]{background:#fff;color:#0D0D0D;border-color:#fff}
+.chip[aria-pressed="true"] .soon{background:rgba(0,0,0,.1);color:#333}
+.chip:disabled{opacity:.5;cursor:not-allowed}
+.soon{font-size:10px;font-weight:800;letter-spacing:.5px;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.12);color:#ddd}
+.dot{width:14px;height:14px;border-radius:50%;border:1px solid rgba(128,128,128,.7)}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;gap:14px;align-items:flex-start;text-align:left;padding:14px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:var(--card);color:#fff;cursor:pointer}
+.opt[aria-pressed="true"]{border-color:var(--y);box-shadow:inset 0 0 0 1px var(--y)}
+.opt b{display:block;font-size:14px;margin-bottom:3px}
+.opt small{display:block;font-size:12.5px;line-height:1.45;color:var(--mut)}
+.opt svg{flex:none;margin-top:2px}
+.dim{display:grid;grid-template-columns:96px 1fr 92px;align-items:center;gap:12px}
+.dim label{font-size:13px;color:#DADADA;font-weight:600}
+.dim label small{display:block;font-weight:500;color:#9a9a9a;font-size:11px}
+input[type=range]{width:100%;accent-color:var(--y);height:28px}
+.numbox{display:flex;align-items:center;border:1px solid rgba(255,255,255,.2);border-radius:10px;background:#0f0f0f;padding:0 8px}
+.numbox input{width:100%;min-height:40px;background:transparent;border:0;color:#fff;font-family:'JetBrains Mono',monospace;font-size:14px;text-align:right;outline:none}
+.numbox span{font-size:11px;color:#8f8f8f;margin-left:4px;font-family:'JetBrains Mono',monospace}
+.numbox:focus-within{border-color:var(--y)}
+.subopts{display:flex;flex-direction:column;gap:10px}
+.sublbl{font-size:12px;color:#9a9a9a;font-weight:600;margin-top:4px}
+.sw{display:flex;flex:none;margin-top:2px}.sw i{display:block;width:14px;height:30px;border:1px solid rgba(128,128,128,.6)}
+.tip{margin:0;font-size:12.5px;line-height:1.5;color:#9a9a9a}
+[hidden]{display:none!important}
+.summary{margin-top:auto;padding:20px 24px 24px;display:flex;flex-direction:column;gap:12px;background:#111}
+.sumtxt{font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.6;color:#DADADA;background:#0b0b0b;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.cta{display:flex;align-items:center;justify-content:center;gap:10px;min-height:54px;border-radius:999px;background:var(--y);color:#0D0D0D;font-weight:800;font-size:15px;text-decoration:none}
+.ghost{min-height:44px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;font-weight:600;font-size:14px;cursor:pointer}
+@media (max-width: 900px){
+  .app{grid-template-columns:1fr;height:auto}
+  .stage{height:64vh;min-height:440px}
+  .panel{border-left:0;border-top:1px solid var(--line)}
+  .tb .lbl{display:none}
+  .tb{padding:0 12px}
+  .toolbar{bottom:12px}
+  .hint{display:none}
+}
+.panel{counter-reset:sec}
+.sec:not([hidden]){counter-increment:sec}
+.num::before{content:counter(sec)}
+.cap{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:rgba(255,194,26,.1);border:1px solid rgba(255,194,26,.35);font-size:13px;color:#E6E6E6}
+.cap b{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--y);text-align:right}
+.caplabel{background:var(--y);font-size:13px;padding:5px 10px}
+</style>
+</head>
+<body>
+<div class="app">
+  <main class="stage" id="stage">
+    <canvas id="gl" aria-label="Visualização 3D da embalagem. Arraste para girar, use a roda ou pinça para aproximar."></canvas>
+
+    <div id="dieWrap" role="region" aria-label="Planificação da embalagem">
+      <div id="dieSvg"></div>
+      <div class="legend"><span><i></i>Corte</span><span><i class="f"></i>Vinco (dobra)</span><span><i class="g"></i>Área de cola</span><span id="sheetSize"></span></div>
+      <div class="note">Planificação ilustrativa gerada pelas suas medidas. A faca final é ajustada pela engenharia da MXM.</div>
+    </div>
+
+    <div class="topbar">
+      <a class="logo" href="#" aria-label="MXM">
+        <span>m</span><svg width="26" height="26" viewBox="0 0 36 36" aria-hidden="true"><line x1="4" y1="1" x2="19" y2="19" stroke="#E6179B" stroke-width="8"/><line x1="32" y1="1" x2="4" y2="35" stroke="#1FA2F0" stroke-width="8"/><line x1="17" y1="17" x2="32" y2="35" stroke="#FFC21A" stroke-width="8"/></svg><span>m</span>
+      </a>
+      <div class="tabs" role="tablist" aria-label="Modo de visualização">
+        <button class="tab" role="tab" id="tab3d" aria-selected="true">3D</button>
+        <button class="tab" role="tab" id="tabDie" aria-selected="false">Planificação</button>
+      </div>
+    </div>
+    <div class="hint" id="hint">Arraste para girar · role para aproximar</div>
+
+    <div id="labels"></div>
+
+    <div class="toolbar" id="toolbar" role="toolbar" aria-label="Controles da visualização">
+      <button class="tb" id="btnOpen" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-5 9 5v9l-9 4-9-4z"/><path d="M12 5v6M3 10l9 4 9-4"/></svg><span class="lbl">Abrir tampa</span></button>
+      <button class="tb" id="btnDims" aria-pressed="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg><span class="lbl">Medidas</span></button>
+      <button class="tb" id="btnRot" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg><span class="lbl">Girar</span></button>
+      <span class="sep" aria-hidden="true"></span>
+      <button class="tb" data-view="34" aria-pressed="true">3/4</button>
+      <button class="tb" data-view="front" aria-pressed="false">Frente</button>
+      <button class="tb" data-view="bottom" aria-pressed="false">Fundo</button>
+      <button class="tb" data-view="edge" aria-pressed="false">Borda</button>
+    </div>
+  </main>
+
+  <aside class="panel" aria-label="Opções da embalagem">
+    <div class="ph">
+      <div class="eyebrow">Orçamento online · MXM</div>
+      <h1>Monte sua embalagem em 3D e receba o orçamento.</h1>
+    </div>
+
+    <section class="sec">
+      <div class="sh"><span class="num"></span>Modelo</div>
+      <div class="chips" id="families">
+        <button class="chip" data-family="cartucho" aria-pressed="true">Cartucho</button>
+        <button class="chip" data-family="delivery" aria-pressed="false">Caixas delivery</button>
+        <button class="chip" data-family="sacola" aria-pressed="false">Sacolas</button>
+        <button class="chip" data-family="copo" aria-pressed="false">Copo</button>
+        <button class="chip" data-family="pote" aria-pressed="false">Pote de açaí e sorvete</button>
+        <button class="chip" data-family="caixa" aria-pressed="false">Caixa de açaí</button>
+      </div>
+    </section>
+
+    <section class="sec" data-for="hamb batata sushi salgado pizza">
+      <div class="sh"><span class="num"></span>Tipo de caixa</div>
+      <div class="chips">
+        <button class="chip" data-model="hamb" aria-pressed="false">Hambúrguer</button>
+        <button class="chip" data-model="batata" aria-pressed="false">Batata frita</button>
+        <button class="chip" data-model="sushi" aria-pressed="false">Sushi</button>
+        <button class="chip" data-model="salgado" aria-pressed="false">Salgados / mini coxinha</button>
+        <button class="chip" data-model="pizza" aria-pressed="false">Pizza</button>
+      </div>
+    </section>
+
+    <section class="sec" data-for="sushi salgado">
+      <div class="sh"><span class="num"></span>Visor na tampa</div>
+      <div class="chips">
+        <button class="chip" data-visor="1" aria-pressed="true">Com visor (janela)</button>
+        <button class="chip" data-visor="0" aria-pressed="false">Sem visor</button>
+      </div>
+      <p class="tip">Janela em filme transparente para o cliente ver o produto sem abrir.</p>
+    </section>
+
+    <section class="sec" data-for="sacola">
+      <div class="sh"><span class="num"></span>Tipo de sacola</div>
+      <div class="opts">
+        <button class="opt" data-bag="sos" aria-pressed="false"><svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#FFC21A" stroke-width="1.6" aria-hidden="true"><path d="M9 9l2.5-3 2.5 3 2.5-3 2.5 3 2.5-3 2.5 3 2.5-3 2.5 3 2.5-3V35H9z"/></svg><span><b>Sacola delivery</b><small>Sem alça, fundo quadrado e topo serrilhado. Ideal para lanches e pedidos de balcão.</small></span></button>
+        <button class="opt" data-bag="alca" aria-pressed="true"><svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#FFC21A" stroke-width="1.6" aria-hidden="true"><rect x="8" y="14" width="24" height="22"/><path d="M14 14c0-7 12-7 12 0"/></svg><span><b>Sacola com alça</b><small>Para delivery, lojas e eventos, com alça de papel ou cordão personalizado.</small></span></button>
+      </div>
+      <div id="handleRow" class="subopts">
+        <div class="sublbl">Alça</div>
+        <div class="chips">
+          <button class="chip" data-handle="torcido" aria-pressed="true">Papel torcido</button>
+          <button class="chip" data-handle="chato" aria-pressed="false">Papel chata</button>
+          <button class="chip" data-handle="cordao" aria-pressed="false">Cordão com ilhós</button>
+        </div>
+      </div>
+      <div id="cordRow" class="subopts" hidden>
+        <div class="sublbl">Cor do cordão</div>
+        <div class="chips">
+          <button class="chip" data-cord="black" aria-pressed="true"><span class="dot" style="background:#1B1B1B"></span>Preto</button>
+          <button class="chip" data-cord="white" aria-pressed="false"><span class="dot" style="background:#EFEFEA"></span>Branco</button>
+          <button class="chip" data-cord="yellow" aria-pressed="false"><span class="dot" style="background:#FFC21A"></span>Amarelo</button>
+          <button class="chip" data-cord="pink" aria-pressed="false"><span class="dot" style="background:#E6179B"></span>Rosa</button>
+        </div>
+        <div class="sublbl">Ilhós</div>
+        <div class="chips">
+          <button class="chip" data-eyelet="gold" aria-pressed="true"><span class="dot" style="background:#D9B45A"></span>Dourado</button>
+          <button class="chip" data-eyelet="silver" aria-pressed="false"><span class="dot" style="background:#C9CED6"></span>Prateado</button>
+          <button class="chip" data-eyelet="black" aria-pressed="false"><span class="dot" style="background:#202020"></span>Preto</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" data-for="cartucho">
+      <div class="sh"><span class="num"></span>Tipo de fechamento do fundo</div>
+      <div class="opts" id="closures">
+        <button class="opt" data-closure="tuck" aria-pressed="true">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#FFC21A" stroke-width="1.6" aria-hidden="true"><rect x="8" y="10" width="24" height="22"/><path d="M8 10v-6h24v6" stroke-dasharray="3 2"/><path d="M10 4h20"/></svg>
+          <span><b>Cola lateral com aba-trava</b><small>Colado só na lateral. Fecha com abas encaixadas nas duas pontas. Ideal para remédios, cosméticos e itens leves.</small></span>
+        </button>
+        <button class="opt" data-closure="auto" aria-pressed="false">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#FFC21A" stroke-width="1.6" aria-hidden="true"><rect x="6" y="6" width="28" height="28"/><path d="M6 6l10 14M34 6L24 20M6 34l10-14M34 34L24 20M16 20h8"/></svg>
+          <span><b>Fundo automático</b><small>O fundo já sai colado da fábrica e se arma sozinho ao abrir a caixa. Montagem rápida e mais resistência para peso.</small></span>
+        </button>
+        <button class="opt" data-closure="semi" aria-pressed="false">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#FFC21A" stroke-width="1.6" aria-hidden="true"><rect x="6" y="6" width="28" height="28"/><rect x="15" y="15" width="10" height="10"/><path d="M6 20h9M25 20h9M20 6v9M20 25v9"/></svg>
+          <span><b>Fundo semi-automático</b><small>Abas que se travam entre si no fundo (1-2-3), sem cola. Bom equilíbrio entre custo e resistência.</small></span>
+        </button>
+      </div>
+    </section>
+
+    <section class="sec" data-for="copo pote caixa">
+      <div class="sh"><span class="num"></span>Capacidade</div>
+      <div class="chips" id="sizes"></div>
+      <p class="tip">Tamanhos de referência. Entram aqui as medidas oficiais da linha MXM.</p>
+    </section>
+
+    <section class="sec">
+      <div class="sh"><span class="num"></span><span id="dimTitle">Medidas externas</span></div>
+      <div id="dimsBox" class="subopts">
+        <div class="dim">
+          <label for="rbW">Largura<small>frente (L)</small></label>
+          <input type="range" id="rbW" min="30" max="250" step="1" value="80" aria-label="Largura em milímetros">
+          <div class="numbox"><input id="nbW" type="number" min="30" max="250" value="80" aria-label="Largura em milímetros"><span>mm</span></div>
+        </div>
+        <div class="dim">
+          <label for="rbD">Profundidade<small>lateral (P)</small></label>
+          <input type="range" id="rbD" min="15" max="150" step="1" value="35" aria-label="Profundidade em milímetros">
+          <div class="numbox"><input id="nbD" type="number" min="15" max="150" value="35" aria-label="Profundidade em milímetros"><span>mm</span></div>
+        </div>
+        <div class="dim">
+          <label for="rbH">Altura<small>(A)</small></label>
+          <input type="range" id="rbH" min="30" max="300" step="1" value="140" aria-label="Altura em milímetros">
+          <div class="numbox"><input id="nbH" type="number" min="30" max="300" value="140" aria-label="Altura em milímetros"><span>mm</span></div>
+        </div>
+        <div class="chips" id="boxPresets" data-for-inner="cartucho">
+          <button class="chip" data-preset="60,25,110">Pequena</button>
+          <button class="chip" data-preset="80,35,140">Média</button>
+          <button class="chip" data-preset="120,60,180">Grande</button>
+          <button class="chip" data-preset="160,160,90">Quadrada baixa</button>
+        </div>
+      </div>
+      <div id="dimsCyl" class="subopts" hidden>
+        <div class="dim">
+          <label for="rcT">Boca<small>diâmetro (Ø)</small></label>
+          <input type="range" id="rcT" min="35" max="160" step="1" value="80" aria-label="Diâmetro da boca em milímetros">
+          <div class="numbox"><input id="ncT" type="number" min="35" max="160" value="80" aria-label="Diâmetro da boca em milímetros"><span>mm</span></div>
+        </div>
+        <div class="dim">
+          <label for="rcB">Fundo<small>diâmetro (Ø)</small></label>
+          <input type="range" id="rcB" min="25" max="140" step="1" value="56" aria-label="Diâmetro do fundo em milímetros">
+          <div class="numbox"><input id="ncB" type="number" min="25" max="140" value="56" aria-label="Diâmetro do fundo em milímetros"><span>mm</span></div>
+        </div>
+        <div class="dim">
+          <label for="rcH">Altura<small>(A)</small></label>
+          <input type="range" id="rcH" min="30" max="200" step="1" value="95" aria-label="Altura em milímetros">
+          <div class="numbox"><input id="ncH" type="number" min="30" max="200" value="95" aria-label="Altura em milímetros"><span>mm</span></div>
+        </div>
+      </div>
+      <div class="cap" id="capBox" hidden><span>Capacidade aproximada</span><b id="capVal">—</b></div>
+    </section>
+
+    <section class="sec" data-for="copo pote">
+      <div class="sh"><span class="num"></span>Tampa</div>
+      <div class="chips" id="lids">
+        <button class="chip" data-lid="0" aria-pressed="true">Sem tampa</button>
+        <button class="chip" data-lid="1" aria-pressed="false">Com tampa</button>
+      </div>
+      <div id="lidColorRow" class="subopts">
+        <div class="sublbl">Cor da tampa</div>
+        <div class="chips">
+          <button class="chip" data-lidc="white" aria-pressed="true"><span class="dot" style="background:#F2F2EF"></span>Branca</button>
+          <button class="chip" data-lidc="black" aria-pressed="false"><span class="dot" style="background:#1B1B1B"></span>Preta</button>
+        </div>
+      </div>
+      <p class="tip" id="lidTip">Tampa plástica com bico, para bebidas quentes e frias.</p>
+    </section>
+
+    <section class="sec">
+      <div class="sh"><span class="num"></span>Material</div>
+      <div class="chips" id="papers">
+        <button class="chip" data-paper="cartao" aria-pressed="true">Papel cartão</button>
+        <button class="chip" data-paper="micro" aria-pressed="false">Micro-ondulado</button>
+      </div>
+      <div id="cartaoOpts" class="subopts">
+        <div class="sublbl">Cor do papel</div>
+        <div class="chips">
+          <button class="chip" data-color="kraft" aria-pressed="true"><span class="dot" style="background:#B4875A"></span>Kraft</button>
+          <button class="chip" data-color="white" aria-pressed="false"><span class="dot" style="background:#F0EDE6"></span>Branco</button>
+        </div>
+      </div>
+      <div id="microOpts" class="subopts" hidden>
+        <div class="sublbl">Onda</div>
+        <div class="chips">
+          <button class="chip" data-flute="E" aria-pressed="true">Onda E <span class="soon">≈1,5 mm</span></button>
+          <button class="chip" data-flute="B" aria-pressed="false">Onda B <span class="soon">≈3 mm</span></button>
+          <button class="chip" data-flute="C" aria-pressed="false">Onda C <span class="soon">≈4 mm</span></button>
+        </div>
+        <div class="sublbl">Faces do papel</div>
+        <div class="opts">
+          <button class="opt" data-faces="kk" aria-pressed="true"><span class="sw" aria-hidden="true"><i style="background:#B4875A"></i><i style="background:#B4875A"></i></span><span><b>Kraft por fora e por dentro</b><small>Visual natural e o mais econômico.</small></span></button>
+          <button class="opt" data-faces="wk" aria-pressed="false"><span class="sw" aria-hidden="true"><i style="background:#F0EDE6"></i><i style="background:#B4875A"></i></span><span><b>Branco por fora, kraft por dentro</b><small>Face branca para uma impressão com cores mais vivas.</small></span></button>
+          <button class="opt" data-faces="inv" aria-pressed="false"><span class="sw" aria-hidden="true"><i style="background:#B4875A"></i><i style="background:#F0EDE6"></i></span><span><b>Fibra invertida</b><small>Kraft por fora e branco por dentro: visual natural e interior limpo ao abrir.</small></span></button>
+        </div>
+        <p class="tip">A onda E é o micro-ondulado clássico, fino e bom de impressão. As ondas B e C são mais grossas, para produtos mais pesados.</p>
+      </div>
+      <p class="tip" id="cylMatTip" hidden>Papel com revestimento interno para líquidos e gelados.</p>
+    </section>
+
+    <section class="sec">
+      <div class="sh"><span class="num"></span>Acabamento</div>
+      <div class="chips" id="finishes">
+        <button class="chip" data-fin="matte" aria-pressed="true">Fosco</button>
+        <button class="chip" data-fin="gloss" aria-pressed="false">Verniz brilho</button>
+        <button class="chip" data-fin="lamb" aria-pressed="false">Laminação brilho</button>
+        <button class="chip" data-fin="lamf" aria-pressed="false">Laminação fosca</button>
+        <button class="chip" data-fin="soft" aria-pressed="false">Soft touch</button>
+      </div>
+    </section>
+
+    <section class="sec" data-for="cartucho hamb batata sushi salgado pizza sacola caixa">
+      <div class="sh"><span class="num"></span>Efeitos especiais no logo</div>
+      <div class="opts">
+        <button class="opt" data-fx="hot" aria-pressed="false"><svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true"><defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE7A3"/><stop offset=".5" stop-color="#D9A93B"/><stop offset="1" stop-color="#FFF1C4"/></linearGradient></defs><rect x="6" y="12" width="28" height="16" rx="3" fill="url(#gg)"/></svg><span><b>Hot stamping</b><small>Logo em película metálica aplicada com calor. Brilho de metal de verdade.</small></span></button>
+        <button class="opt" data-fx="spot" aria-pressed="false"><svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#FFC21A" stroke-width="1.6" aria-hidden="true"><rect x="6" y="6" width="28" height="28" rx="3"/><path d="M13 22l5-8 5 8 4-5" stroke-linecap="round"/><circle cx="28" cy="12" r="2.5" fill="#FFC21A"/></svg><span><b>Verniz localizado</b><small>Brilho só no logo, contrastando com o resto da caixa.</small></span></button>
+        <button class="opt" data-fx="relevo" aria-pressed="false"><svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#FFC21A" stroke-width="1.6" aria-hidden="true"><path d="M6 28h8l3-10h6l3 10h8"/><path d="M6 32h28" stroke-dasharray="2 2"/></svg><span><b>Alto relevo</b><small>Logo em relevo no papel, para sentir com os dedos.</small></span></button>
+      </div>
+      <div id="foilRow" class="subopts" hidden>
+        <div class="sublbl">Cor do hot stamping</div>
+        <div class="chips">
+          <button class="chip" data-foil="gold" aria-pressed="true"><span class="dot" style="background:#E6BC57"></span>Dourado</button>
+          <button class="chip" data-foil="silver" aria-pressed="false"><span class="dot" style="background:#D5D9E0"></span>Prateado</button>
+          <button class="chip" data-foil="copper" aria-pressed="false"><span class="dot" style="background:#CF8E68"></span>Cobre</button>
+        </div>
+      </div>
+      <p class="tip">Os efeitos podem ser combinados, por exemplo hot stamping com alto relevo.</p>
+    </section>
+
+    <section class="sec">
+      <div class="sh"><span class="num"></span>Quantidade</div>
+      <div class="chips" id="qtys">
+        <button class="chip" data-q="1000" aria-pressed="false">1.000</button>
+        <button class="chip" data-q="5000" aria-pressed="true">5.000</button>
+        <button class="chip" data-q="10000" aria-pressed="false">10.000</button>
+        <button class="chip" data-q="20000" aria-pressed="false">20.000+</button>
+      </div>
+    </section>
+
+    <div class="summary">
+      <div class="eyebrow" style="color:#9a9a9a">Sua especificação</div>
+      <div class="sumtxt" id="sum"></div>
+      <button class="cta" id="goQuote" type="button">Continuar para o orçamento →</button>
+      <a class="cta" id="wa" href="#" hidden>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.8 7L4 20l1.1-4A8 8 0 1 1 20 12z"/></svg>
+        Pedir orçamento no WhatsApp
+      </a>
+      <button class="ghost" id="copy">Copiar especificação</button>
+    </div>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/environments/RoomEnvironment.js"></script>
+<script>
+(function(){
+const S = 0.01;          // scene units per mm
+const TILE = 140;        // texture tile size in mm
+const $ = id => document.getElementById(id);
+const LABELS = {
+  closure:{tuck:'Cola lateral com aba-trava',auto:'Fundo automático',semi:'Fundo semi-automático'},
+  fin:{matte:'Fosco',gloss:'Verniz brilho',lamb:'Laminação brilho',lamf:'Laminação fosca',soft:'Soft touch'}
+};
+const isCyl = m => m==='copo' || m==='pote';
+const SHAPE = {copo:{b:0.70,h:1.22,inset:7,rim:1.4}, pote:{b:0.80,h:0.66,inset:5,rim:1.8}};
+const SIZES = {copo:[50,80,100,120,180,200,300,400,500], pote:[200,300,400,500,550,700,1000], caixa:[2,5,10]};
+const RANGES = {cartucho:{W:[30,250],D:[15,150],H:[30,300]}, caixa:{W:[100,400],D:[100,400],H:[60,400]},
+  hamb:{W:[80,200],D:[80,200],H:[50,150]}, batata:{W:[60,140],D:[30,90],H:[70,180]}, sushi:{W:[120,320],D:[80,240],H:[25,100]},
+  salgado:{W:[120,320],D:[80,240],H:[35,120]}, pizza:{W:[200,500],D:[200,500],H:[30,70]}, sacola:{W:[120,450],D:[60,220],H:[150,500]}};
+const FAM = {cartucho:['cartucho'],delivery:['hamb','batata','sushi','salgado','pizza'],sacola:['sacola'],copo:['copo'],pote:['pote'],caixa:['caixa']};
+const famOf = m => Object.keys(FAM).find(f=>FAM[f].includes(m));
+const NAMES = {cartucho:'Cartucho',hamb:'Caixa de hambúrguer',batata:'Caixa de batata frita',sushi:'Caixa de sushi',salgado:'Caixa de salgados / mini coxinha',pizza:'Caixa de pizza',caixa:'Caixa de açaí com tampa (tampa e fundo)',sacola:'Sacola'};
+const MICRO_OK = ['cartucho','caixa','sushi','salgado','pizza'];
+const HINGED = ['cartucho','hamb','sushi','salgado','pizza'];
+function cylVol(m,d){const t=0.4,R=d.T/2-t,r=d.B/2-t,h=d.H-SHAPE[m].inset; return Math.max(0,Math.PI*h/3*(R*R+R*r+r*r)/1000);}
+function solveCyl(m,ml){const s=SHAPE[m];let lo=20,hi=220;for(let i=0;i<40;i++){const T=(lo+hi)/2;const v=cylVol(m,{T:T,B:T*s.b,H:T*s.h});if(v<ml*1.08)lo=T;else hi=T;}const T=Math.round((lo+hi)/2);return {T:T,B:Math.round(T*s.b),H:Math.round(T*s.h)};}
+function solveBox(L){const side=Math.cbrt(L*1e6);return {W:Math.round(side*1.06),D:Math.round(side*1.06),H:Math.round(side*0.9)};}
+function boxVol(d){return d.W*d.D*d.H/1e6;}
+
+const st = {model:'cartucho',closure:'tuck',paper:'cartao',color:'kraft',flute:'E',faces:'kk',fin:'matte',q:5000,
+  open:false,dims:true,rot:false,lid:false,lidColor:'white',
+  visor:true, bagType:'alca', handle:'torcido', cord:'black', eyelet:'gold', fx:{hot:false,spot:false,relevo:false}, foil:'gold', last:{delivery:'hamb'},
+  D:{cartucho:{W:80,D:35,H:140}, caixa:solveBox(10), copo:solveCyl('copo',300), pote:solveCyl('pote',500),
+    hamb:{W:120,D:120,H:85}, batata:{W:90,D:45,H:125}, sushi:{W:210,D:140,H:50}, salgado:{W:190,D:140,H:65}, pizza:{W:350,D:350,H:42}, sacola:{W:260,D:120,H:320}},
+  size:{copo:300,pote:500,caixa:10}};
+const cur = JSON.parse(JSON.stringify(st.D));
+let openness = 0, lidT = 0, lidClosing = true;
+
+/* ---------- renderer / scene ---------- */
+const canvas = $('gl'), stage = $('stage');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.92;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x000000,0);
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+// studio for metallic/gloss effects: softboxes that read as crisp highlights
+const metalEnv=(function(){const c=document.createElement('canvas');c.width=1024;c.height=512;const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,512);g.addColorStop(0,'#3a3a3a');g.addColorStop(.5,'#151515');g.addColorStop(1,'#050505');x.fillStyle=g;x.fillRect(0,0,1024,512);
+  const box=(px,py,w,h,col,blur)=>{x.filter='blur('+blur+'px)';x.fillStyle=col;x.fillRect(px,py,w,h);x.filter='none';};
+  box(90,110,170,190,'#ffffff',6); box(610,70,300,70,'#ffffff',5); box(430,170,90,210,'#ffe4b5',10); box(300,330,520,40,'#bdbdbd',14); box(930,150,80,160,'#d8e6ff',8);
+  const t=new THREE.CanvasTexture(c); t.mapping=THREE.EquirectangularReflectionMapping; t.encoding=THREE.sRGBEncoding;
+  return pmrem.fromEquirectangular(t).texture;})();
+const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 100);
+camera.position.set(2.2,1.6,2.8);
+const controls = new THREE.OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.enablePan = false; controls.minDistance = 0.3; controls.maxDistance = 14;
+controls.autoRotateSpeed = 1.6;
+const key = new THREE.DirectionalLight(0xfff1df, 2.4);
+key.position.set(-3.5,5,2.2); key.castShadow = true;
+key.shadow.mapSize.set(2048,2048);
+key.shadow.camera.left=-6; key.shadow.camera.right=6; key.shadow.camera.top=6; key.shadow.camera.bottom=-6;
+key.shadow.camera.near=0.5; key.shadow.camera.far=20; key.shadow.bias=-0.0004; key.shadow.normalBias=0.01;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0xd6e8ff, 0.7); rim.position.set(3,2.5,-3); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xffffff,0x2a2520,0.2));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(20,20), new THREE.ShadowMaterial({opacity:0.42}));
+ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
+const blobC = document.createElement('canvas'); blobC.width=blobC.height=256;
+(function(){const x=blobC.getContext('2d');const g=x.createRadialGradient(128,128,10,128,128,128);g.addColorStop(0,'rgba(0,0,0,.75)');g.addColorStop(.55,'rgba(0,0,0,.35)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,256,256);})();
+const blob = new THREE.Mesh(new THREE.PlaneGeometry(1,1), new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(blobC),transparent:true,depthWrite:false}));
+blob.rotation.x = -Math.PI/2; blob.position.y = 0.0006; scene.add(blob);
+
+/* ---------- procedural board textures ---------- */
+function makeBase(kind){
+  const N=1024, c=document.createElement('canvas'); c.width=c.height=N; const x=c.getContext('2d');
+  const base={kraft:[178,132,88],white:[241,238,231]}[kind];
+  x.fillStyle='rgb('+base.join(',')+')'; x.fillRect(0,0,N,N);
+  for(let i=0;i<70;i++){const px=Math.random()*N,py=Math.random()*N,r=60+Math.random()*180;const g=x.createRadialGradient(px,py,0,px,py,r);
+    const a=kind==='kraft'?0.07:0.025; const dark=Math.random()<.5;
+    g.addColorStop(0,dark?'rgba(60,35,10,'+a+')':'rgba(255,245,225,'+a+')'); g.addColorStop(1,'rgba(0,0,0,0)'); x.fillStyle=g; x.fillRect(px-r,py-r,r*2,r*2);}
+  const id=x.getImageData(0,0,N,N), d=id.data; const amp=kind==='kraft'?16:6;
+  for(let i=0;i<d.length;i+=4){const n=(Math.random()-.5)*amp; d[i]+=n; d[i+1]+=n; d[i+2]+=n*0.9;}
+  x.putImageData(id,0,0);
+  const nf=kind==='kraft'?3200:1400;
+  for(let i=0;i<nf;i++){
+    const px=Math.random()*N,py=Math.random()*N,a=Math.random()*Math.PI*2,l=5+Math.random()*24,light=Math.random()<.5;
+    if(kind==='kraft') x.strokeStyle=light?'rgba(255,236,205,.20)':'rgba(70,40,15,.18)';
+    else x.strokeStyle=light?'rgba(255,255,255,.5)':'rgba(130,120,100,.08)';
+    x.lineWidth=.5+Math.random()*.9; x.beginPath(); x.moveTo(px,py);
+    x.quadraticCurveTo(px+Math.cos(a)*l*.5+(Math.random()-.5)*5,py+Math.sin(a)*l*.5+(Math.random()-.5)*5,px+Math.cos(a)*l,py+Math.sin(a)*l); x.stroke();
+  }
+  return c;
+}
+const bases = {kraft:makeBase('kraft'), white:makeBase('white')};
+const FIN = {
+  matte:{roughness:0.88,clearcoat:0,clearcoatRoughness:0.6,sheen:0},
+  gloss:{roughness:0.42,clearcoat:0.85,clearcoatRoughness:0.12,sheen:0},
+  lamb:{roughness:0.3,clearcoat:1,clearcoatRoughness:0.04,sheen:0},
+  lamf:{roughness:0.8,clearcoat:0.35,clearcoatRoughness:0.55,sheen:0.15},
+  soft:{roughness:0.97,clearcoat:0,clearcoatRoughness:0.6,sheen:0.6}
+};
+const SUB = {cartao:{t:0.55,p:0}, E:{t:1.6,p:3.3}, B:{t:3.0,p:6.3}, C:{t:4.0,p:7.9}};
+function paperEff(){return MICRO_OK.includes(st.model)?st.paper:'cartao';}
+function subKey(){return paperEff()==='cartao'?'cartao':st.flute;}
+function outerC(){ if(paperEff()==='cartao') return st.color; return st.faces==='wk'?'white':'kraft'; }
+function innerC(){ if(paperEff()==='cartao') return st.color; return st.faces==='inv'?'white':'kraft'; }
+function matLabel(){
+  if(paperEff()==='cartao') return 'Papel cartão '+(st.color==='kraft'?'kraft':'branco');
+  return (st.flute==='E'?'Micro-ondulado onda E':'Papelão ondulado onda '+st.flute)+' · '+{kk:'kraft por fora e por dentro',wk:'branco por fora, kraft por dentro',inv:'fibra invertida (kraft por fora, branco por dentro)'}[st.faces];
+}
+let T = SUB.cartao.t;
+const allMats = [], surfMats = [], edgeTexs = [], meshes = [];
+const COL = {kraft:'#B4875A', white:'#EEEBE4'};
+function mk(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c;}
+const edgeC = {wH:mk(512,128), wV:mk(128,512), lH:mk(512,128), lV:mk(128,512)};
+function paintEdges(){
+  const corr=subKey()!=='cartao', o=COL[outerC()], inn=COL[innerC()];
+  Object.keys(edgeC).forEach(name=>{
+    const c=edgeC[name], x=c.getContext('2d'), L=512, Th=128;
+    x.setTransform(1,0,0,1,0,0); x.clearRect(0,0,c.width,c.height);
+    if(name[1]==='V') x.setTransform(0,1,1,0,0,0);
+    const lt=corr?Th*0.16:Th*0.3;
+    if(!corr){ x.fillStyle=st.color==='white'?'#D9D3C7':'#A27750'; x.fillRect(0,0,L,Th); }
+    else {
+      x.fillStyle='#3E2B19'; x.fillRect(0,0,L,Th);
+      if(name[0]==='w'){
+        const amp=Th/2-lt-Th*0.045;
+        x.strokeStyle='#C79F68'; x.lineWidth=Th*0.09; x.lineJoin='round'; x.beginPath();
+        for(let px=0;px<=L;px+=2){const y=Th/2+amp*Math.sin(px/L*Math.PI*8); if(px)x.lineTo(px,y); else x.moveTo(px,y);} x.stroke();
+        x.strokeStyle='rgba(255,240,210,.25)'; x.lineWidth=Th*0.025; x.stroke();
+      } else {
+        x.fillStyle='#9A7448'; x.fillRect(0,lt,L,Th-2*lt);
+        x.fillStyle='rgba(0,0,0,.28)'; x.fillRect(0,Th*0.47,L,Th*0.06);
+      }
+    }
+    x.fillStyle=o; x.fillRect(0,0,L,lt); x.fillStyle=inn; x.fillRect(0,Th-lt,L,lt);
+    x.globalAlpha=.08; for(let n=0;n<700;n++){x.fillStyle=Math.random()<.5?'#000':'#fff'; x.fillRect(Math.random()*L,Math.random()*Th,2,2);} x.globalAlpha=1;
+  });
+  edgeTexs.forEach(t=>t.needsUpdate=true);
+}
+const stripeC = mk(256,8);
+(function(){const x=stripeC.getContext('2d');for(let px=0;px<256;px++){const v=Math.round(128+110*Math.cos(px/256*Math.PI*2));x.fillStyle='rgb('+v+','+v+','+v+')';x.fillRect(px,0,1,8);}})();
+function texOf(img){const t=new THREE.Texture(img); t.needsUpdate=true; t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=renderer.capabilities.getMaxAnisotropy(); return t;}
+function surfMat(role){
+  const map=texOf(bases[role==='outer'?outerC():innerC()]); map.encoding=THREE.sRGBEncoding;
+  const m=new THREE.MeshPhysicalMaterial({map,bumpMap:map,bumpScale:0.0025,roughness:.88,envMapIntensity:.42,sheenColor:new THREE.Color(0xffffff),sheenRoughness:.8});
+  m.userData={role,stripes:texOf(stripeC)}; allMats.push(m); surfMats.push(m); return m;
+}
+function edgeMat(img){const map=texOf(img); map.encoding=THREE.sRGBEncoding; edgeTexs.push(map); return new THREE.MeshStandardMaterial({map,roughness:.95,envMapIntensity:.3});}
+const FA=['x','x','y','y','z','z'], FS=[1,-1,1,-1,1,-1], UVA={x:['z','y'],y:['x','z'],z:['x','y']};
+
+/* ---------- print artwork (example MXM brand) ---------- */
+const FONT = '"Plus Jakarta Sans", system-ui, sans-serif';
+const INK = '#1A1A1A';
+function drawLogo(x, cx, base, fs, ink, mono){
+  x.font='800 '+fs+'px '+FONT; x.fillStyle=ink; x.textBaseline='alphabetic'; x.textAlign='left';
+  const mw=x.measureText('m').width, xh=fs*0.53, xw=xh*1.02, gap=fs*0.03, total=mw*2+xw+gap*2;
+  let x0=cx-total/2; x.fillText('m',x0,base);
+  const xl=x0+mw+gap, top=base-xh, bot=base, sw=fs*0.12;
+  x.lineWidth=sw; x.lineCap='butt';
+  const L=(c,a,b,cc,d)=>{x.strokeStyle=c;x.beginPath();x.moveTo(a,b);x.lineTo(cc,d);x.stroke();};
+  L(mono?ink:'#E6179B', xl+sw*0.1, top, xl+xw*0.55, top+(bot-top)*0.55);
+  L(mono?ink:'#1FA2F0', xl+xw, top, xl, bot);
+  L(mono?ink:'#FFC21A', xl+xw*0.45, top+(bot-top)*0.45, xl+xw-sw*0.1, bot);
+  x.fillStyle=ink; x.fillText('m', xl+xw+gap, base);
+}
+function recycle(x,cx,cy,s,ink){x.strokeStyle=ink;x.lineWidth=s*0.12;x.lineJoin='round';x.beginPath();x.moveTo(cx,cy-s*0.55);x.lineTo(cx+s*0.6,cy+s*0.45);x.lineTo(cx-s*0.6,cy+s*0.45);x.closePath();x.stroke();}
+const logoC=mk(1024,340), infoC=mk(800,1000), cxInfoC=mk(800,1000), bagInfoC=mk(800,1000);
+function paintLogo(){const x=logoC.getContext('2d'); x.clearRect(0,0,1024,340); drawLogo(x,512,250,300,INK);}
+function paintInfoCanvas(c,title,l2,l3){
+  const x=c.getContext('2d'); x.clearRect(0,0,800,1000);
+  drawLogo(x,400,190,190,INK);
+  x.fillStyle=INK; x.textAlign='center';
+  x.font='700 46px '+FONT; x.fillText(title,400,330);
+  x.font='500 34px '+FONT; x.globalAlpha=.8; x.fillText(l2,400,395); x.fillText(l3,400,445); x.globalAlpha=1;
+  recycle(x,400,590,120,INK);
+  x.fillStyle=INK; x.font='600 30px '+FONT; x.fillText('Papel de fonte responsável',400,720);
+  x.font='500 28px '+FONT; x.globalAlpha=.75; x.fillText('Descarte no lixo reciclável',400,765); x.globalAlpha=1;
+  let bx=250; for(let i=0;i<46;i++){const w=[4,4,8,4,12][i%5]*(i%3?1:1.3); if(i%2===0){x.fillRect(bx,820,w,110);} bx+=w+3; if(bx>550)break;}
+  x.textAlign='left';
+}
+function paintInfo(){
+  const c=st.D.cartucho, k=st.D.caixa;
+  paintInfoCanvas(infoC,'Embalagem de exemplo','Cartucho · '+LABELS.closure[st.closure],c.W+' × '+c.D+' × '+c.H+' mm');
+  const b=st.D.sacola; paintInfoCanvas(bagInfoC,st.bagType==='sos'?'Sacola delivery':'Sacola personalizada','Embalagem de exemplo',b.W+' × '+b.D+' × '+b.H+' mm');
+  paintInfoCanvas(cxInfoC,'Caixa de açaí',(st.size.caixa?st.size.caixa+' L':'≈ '+fmtL(boxVol(k)))+' · tampa e fundo',k.W+' × '+k.D+' × '+k.H+' mm');
+}
+function decalMat(c){
+  const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.anisotropy=8;
+  const m=new THREE.MeshPhysicalMaterial({map:t,transparent:true,roughness:.85,envMapIntensity:.42,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2,depthWrite:false});
+  allMats.push(m); return m;
+}
+const logoMat=decalMat(logoC), infoMat=decalMat(infoC), cxInfoMat=decalMat(cxInfoC), bagInfoMat=decalMat(bagInfoC);
+function fmtL(v){return v.toLocaleString('pt-BR',{maximumFractionDigits:1})+' L';}
+function fmtMl(v){return Math.round(v).toLocaleString('pt-BR')+' ml';}
+
+/* ---------- cartucho bottom closure artwork ---------- */
+const botC=mk(1024,1024);
+const botTex=new THREE.CanvasTexture(botC); botTex.encoding=THREE.sRGBEncoding; botTex.anisotropy=8;
+function paintBottom(){
+  const d=st.D.cartucho, W=d.W, D=d.D, N=1024, x=botC.getContext('2d'), kx=N/W, ky=N/D, k=Math.min(kx,ky);
+  x.setTransform(1,0,0,1,0,0);
+  const pat=x.createPattern(bases[outerC()],'repeat'); pat.setTransform(new DOMMatrix().scale(TILE*kx/1024,TILE*ky/1024));
+  x.fillStyle=pat; x.fillRect(0,0,N,N);
+  const white=outerC()==='white';
+  const groove=pts=>{
+    x.lineWidth=Math.max(4,k*0.7); x.lineCap='round'; x.lineJoin='round';
+    x.strokeStyle=white?'rgba(70,60,45,.45)':'rgba(40,22,5,.7)'; x.beginPath();
+    pts.forEach((q,i)=>i?x.lineTo(q[0]*kx,q[1]*ky):x.moveTo(q[0]*kx,q[1]*ky)); x.stroke();
+    x.strokeStyle='rgba(255,250,235,.4)'; x.lineWidth=Math.max(1.5,k*0.2);
+    x.beginPath(); pts.forEach((q,i)=>i?x.lineTo(q[0]*kx+2,q[1]*ky+2):x.moveTo(q[0]*kx+2,q[1]*ky+2)); x.stroke();
+  };
+  if(st.closure==='tuck'){ groove([[1.5,2],[W-1.5,2]]); groove([[3,D-3],[W-3,D-3]]); }
+  else if(st.closure==='auto'){
+    const a=Math.min(D/2,W/2), m=D/2, s2=Math.min(5,D*0.12);
+    groove([[0,0],[a,m]]); groove([[W,0],[W-a,m]]); groove([[0,D],[a,m]]); groove([[W,D],[W-a,m]]);
+    groove([[a,m],[W/2-4,m],[W/2-4,m+s2],[W/2+4,m+s2],[W/2+4,m],[W-a,m]]);
+  } else {
+    const rw=W*0.34, rd=D*0.34, l=(W-rw)/2, t=(D-rd)/2;
+    groove([[l,t],[l+rw,t],[l+rw,t+rd],[l,t+rd],[l,t]]);
+    groove([[0,D/2],[l,t]]); groove([[W/2,0],[l+rw,t]]); groove([[W,D/2],[l+rw,t+rd]]); groove([[W/2,D],[l,t+rd]]);
+    const r=Math.min(rw,rd)*0.28; x.fillStyle='rgba(0,0,0,.55)'; x.beginPath(); x.ellipse(W/2*kx,D/2*ky,r*kx,r*ky,0,0,Math.PI*2); x.fill();
+  }
+  botTex.needsUpdate=true;
+}
+const botUnder=new THREE.MeshPhysicalMaterial({map:botTex,roughness:.88,envMapIntensity:.42,sheenColor:new THREE.Color(0xffffff),sheenRoughness:.8}); allMats.push(botUnder);
+
+/* ---------- board meshes ---------- */
+const U=new THREE.BoxGeometry(1,1,1), P=new THREE.PlaneGeometry(1,1);
+function rigMesh(cfg){
+  const mats=[], faces=[];
+  for(let f=0;f<6;f++){
+    const ax=FA[f], u=UVA[ax][0], v=UVA[ax][1];
+    if(ax===cfg.thin){ const role=(cfg.outer!==0&&FS[f]===cfg.outer)?'outer':'inner'; const m=surfMat(role); mats.push(m); faces.push({kind:'surf',u,v,m}); }
+    else { const thickU=(u===cfg.thin), wave=(ax===cfg.F); const m=edgeMat(edgeC[(wave?'w':'l')+(thickU?'V':'H')]); mats.push(m); faces.push({kind:'edge',u,v,thickU,m}); }
+  }
+  const me=new THREE.Mesh(U,mats); me.castShadow=true; me.receiveShadow=true; me.userData.faces=faces; meshes.push(me); return me;
+}
+function updRep(me){
+  const sz={x:me.scale.x/S,y:me.scale.y/S,z:me.scale.z/S}, p=SUB[subKey()].p;
+  me.userData.faces.forEach(f=>{
+    if(f.kind==='surf'){ f.m.map.repeat.set(sz[f.u]/TILE,sz[f.v]/TILE); f.m.userData.stripes.repeat.set(p?sz[f.u]/p:1,1); }
+    else if(f.kind==='edge'){ const len=f.thickU?sz[f.v]:sz[f.u]; const r=p?len/(4*p):1; f.m.map.repeat.set(f.thickU?1:r, f.thickU?r:1); }
+  });
+}
+function decal(mat){const m=new THREE.Mesh(P,mat); return m;}
+function ease(t){t=Math.min(1,Math.max(0,t));return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+function bounce(x){const n=7.5625,d=2.75; if(x<1/d)return n*x*x; if(x<2/d)return n*(x-=1.5/d)*x+.75; if(x<2.5/d)return n*(x-=2.25/d)*x+.9375; return n*(x-=2.625/d)*x+.984375;}
+
+/* ===== RIG 1: cartucho ===== */
+const cartRig=new THREE.Group(); scene.add(cartRig);
+const front=rigMesh({thin:'z',outer:1,F:'y'}), back=rigMesh({thin:'z',outer:-1,F:'y'});
+const left=rigMesh({thin:'x',outer:-1,F:'y'}), right=rigMesh({thin:'x',outer:1,F:'y'});
+const bottom=rigMesh({thin:'y',outer:-1,F:'z'}); bottom.material[3]=botUnder; bottom.userData.faces[3]={kind:'none'};
+const lidPivot=new THREE.Group(), lid=rigMesh({thin:'y',outer:1,F:'z'}), tonguePivot=new THREE.Group(), tongue=rigMesh({thin:'y',outer:1,F:'z'});
+lidPivot.add(lid); lidPivot.add(tonguePivot); tonguePivot.add(tongue);
+const dL=new THREE.Group(), dLm=rigMesh({thin:'y',outer:0,F:'z'}); dL.add(dLm);
+const dR=new THREE.Group(), dRm=rigMesh({thin:'y',outer:0,F:'z'}); dR.add(dRm);
+const logoFront=decal(logoMat), infoBack=decal(infoMat), logoSide=decal(logoMat);
+infoBack.rotation.y=Math.PI; logoSide.rotation.set(0,Math.PI/2,Math.PI/2);
+cartRig.add(front,back,left,right,bottom,lidPivot,dL,dR,logoFront,infoBack,logoSide);
+function layoutCart(){
+  const d=cur.cartucho, W=d.W,D=d.D,H=d.H,t=T;
+  front.scale.set(W*S,H*S,t*S); front.position.set(0,H/2*S,(D/2-t/2)*S);
+  back.scale.set(W*S,H*S,t*S); back.position.set(0,H/2*S,(-D/2+t/2)*S);
+  left.scale.set(t*S,H*S,(D-2*t)*S); left.position.set((-W/2+t/2)*S,H/2*S,0);
+  right.scale.set(t*S,H*S,(D-2*t)*S); right.position.set((W/2-t/2)*S,H/2*S,0);
+  bottom.scale.set((W-0.02)*S,t*S,(D-0.02)*S); bottom.position.set(0,t/2*S,0);
+  lidPivot.position.set(0,H*S,(-D/2)*S);
+  lid.scale.set(W*S,t*S,D*S); lid.position.set(0,t/2*S,D/2*S);
+  const tl=Math.min(15,D*0.55);
+  tonguePivot.position.set(0,t/2*S,(D-t)*S);
+  tongue.scale.set((W-3)*S,t*S,tl*S); tongue.position.set(0,0,tl/2*S);
+  const fl=Math.min(W*0.45,D*0.8);
+  dL.position.set((-W/2+t)*S,(H-t*1.2)*S,0); dLm.scale.set(fl*S,t*S,(D-4)*S); dLm.position.set(fl/2*S,0,0);
+  dR.position.set((W/2-t)*S,(H-t*1.2)*S,0); dRm.scale.set(fl*S,t*S,(D-4)*S); dRm.position.set(-fl/2*S,0,0);
+  const a=ease(openness/0.65), b=ease((openness-0.35)/0.65);
+  lidPivot.rotation.x=-a*THREE.MathUtils.degToRad(118);
+  tonguePivot.rotation.x=THREE.MathUtils.degToRad(90)*(1-a);
+  dL.rotation.z= b*THREE.MathUtils.degToRad(100);
+  dR.rotation.z=-b*THREE.MathUtils.degToRad(100);
+  const lw=Math.min(W*0.66,H*0.95), e=0.05;
+  logoFront.scale.set(lw*S,lw*340/1024*S,1); logoFront.position.set(0,H*0.56*S,(D/2+e)*S);
+  const iw=Math.min(W*0.72,H*0.5*0.8); infoBack.scale.set(iw*S,iw*1.25*S,1); infoBack.position.set(0,H*0.45*S,(-D/2-e)*S);
+  const sw=Math.min(H*0.42,D*0.6*3.0); logoSide.scale.set(sw*S,sw*340/1024*S,1); logoSide.position.set((W/2+e)*S,H*0.5*S,0);
+  blob.scale.set(W*1.55*S,D*1.9*S,1);
+}
+
+/* ===== RIG 2: caixa de açaí (tampa e fundo) ===== */
+const cxRig=new THREE.Group(); scene.add(cxRig);
+const cxF=rigMesh({thin:'z',outer:1,F:'y'}), cxB=rigMesh({thin:'z',outer:-1,F:'y'}), cxL=rigMesh({thin:'x',outer:-1,F:'y'}), cxR=rigMesh({thin:'x',outer:1,F:'y'}), cxBot=rigMesh({thin:'y',outer:-1,F:'z'});
+const cxLid=new THREE.Group();
+const lTop=rigMesh({thin:'y',outer:1,F:'z'}), lF=rigMesh({thin:'z',outer:1,F:'y'}), lB=rigMesh({thin:'z',outer:-1,F:'y'}), lL=rigMesh({thin:'x',outer:-1,F:'y'}), lR=rigMesh({thin:'x',outer:1,F:'y'});
+const cxLogoTop=decal(logoMat); cxLogoTop.rotation.x=-Math.PI/2;
+const cxLogoLidF=decal(logoMat);
+cxLid.add(lTop,lF,lB,lL,lR,cxLogoTop,cxLogoLidF);
+const cxLogoF=decal(logoMat), cxInfo=decal(cxInfoMat); cxInfo.rotation.y=Math.PI/2;
+cxRig.add(cxF,cxB,cxL,cxR,cxBot,cxLid,cxLogoF,cxInfo);
+function lidOffset(dropMm){ // returns vertical offset (mm) for current lidT
+  const p=lidClosing?bounce(Math.min(1,lidT)):ease(lidT);
+  return (1-p)*dropMm;
+}
+function layoutCaixa(){
+  const d=cur.caixa, W=d.W,D=d.D,H=d.H,t=T, g=0.8;
+  cxF.scale.set(W*S,H*S,t*S); cxF.position.set(0,H/2*S,(D/2-t/2)*S);
+  cxB.scale.set(W*S,H*S,t*S); cxB.position.set(0,H/2*S,(-D/2+t/2)*S);
+  cxL.scale.set(t*S,H*S,(D-2*t)*S); cxL.position.set((-W/2+t/2)*S,H/2*S,0);
+  cxR.scale.set(t*S,H*S,(D-2*t)*S); cxR.position.set((W/2-t/2)*S,H/2*S,0);
+  cxBot.scale.set((W-0.02)*S,t*S,(D-0.02)*S); cxBot.position.set(0,t/2*S,0);
+  const LW=W+2*g+2*t, LD=D+2*g+2*t, lh=Math.min(H*0.3,70);
+  lTop.scale.set(LW*S,t*S,LD*S); lTop.position.set(0,t/2*S,0);
+  lF.scale.set(LW*S,lh*S,t*S); lF.position.set(0,(t-lh/2)*S,(LD/2-t/2)*S);
+  lB.scale.set(LW*S,lh*S,t*S); lB.position.set(0,(t-lh/2)*S,(-LD/2+t/2)*S);
+  lL.scale.set(t*S,lh*S,(LD-2*t)*S); lL.position.set((-LW/2+t/2)*S,(t-lh/2)*S,0);
+  lR.scale.set(t*S,lh*S,(LD-2*t)*S); lR.position.set((LW/2-t/2)*S,(t-lh/2)*S,0);
+  const e=0.05, tw=Math.min(LW*0.55,LD*1.5); cxLogoTop.scale.set(tw*S,tw*340/1024*S,1); cxLogoTop.position.set(0,(t+e)*S,0);
+  const fw=Math.min(LW*0.4,lh*0.7*3); cxLogoLidF.scale.set(fw*S,fw*340/1024*S,1); cxLogoLidF.position.set(0,(t-lh/2)*S,(LD/2+e)*S);
+  const bodyVis=H-lh; const bw=Math.min(W*0.62,bodyVis*0.8*3); cxLogoF.scale.set(bw*S,bw*340/1024*S,1); cxLogoF.position.set(0,bodyVis*0.5*S,(D/2+e)*S);
+  const iw=Math.min(D*0.55,bodyVis*0.8*0.8); cxInfo.scale.set(iw*S,iw*1.25*S,1); cxInfo.position.set((W/2+e)*S,Math.max(iw*0.65,bodyVis*0.5)*S,0);
+  const off=lidOffset(Math.max(80,H*0.7));
+  cxLid.position.set(0,(H+off)*S,0);
+  cxLid.rotation.x=-(off/Math.max(80,H*0.7))*0.22;
+  blob.scale.set(W*1.5*S,D*1.5*S,1);
+}
+
+/* ===== RIG 3: copo e pote (torneados) ===== */
+const cupRig=new THREE.Group(); scene.add(cupRig);
+const cupWallC=mk(2048,1024), cupWallTex=new THREE.CanvasTexture(cupWallC); cupWallTex.encoding=THREE.sRGBEncoding; cupWallTex.anisotropy=8; cupWallTex.wrapS=THREE.RepeatWrapping;
+const cupOuterMat=new THREE.MeshPhysicalMaterial({map:cupWallTex,roughness:.85,side:THREE.DoubleSide,envMapIntensity:.42,sheenColor:new THREE.Color(0xffffff),sheenRoughness:.8}); allMats.push(cupOuterMat);
+const cupInnerTex=texOf(bases.white); cupInnerTex.encoding=THREE.sRGBEncoding;
+const cupInnerMat=new THREE.MeshPhysicalMaterial({map:cupInnerTex,roughness:.42,clearcoat:.4,clearcoatRoughness:.3,side:THREE.DoubleSide,envMapIntensity:.55});
+const rimTex=texOf(bases.white); rimTex.encoding=THREE.sRGBEncoding;
+const rimMat=new THREE.MeshPhysicalMaterial({map:rimTex,roughness:.7,envMapIntensity:.5}); allMats.push(rimMat);
+const cupOuter=new THREE.Mesh(new THREE.BufferGeometry(),cupOuterMat), cupInner=new THREE.Mesh(new THREE.BufferGeometry(),cupInnerMat);
+const cupRim=new THREE.Mesh(new THREE.BufferGeometry(),rimMat);
+const cupBottom=new THREE.Mesh(new THREE.CircleGeometry(1,72),cupInnerMat); cupBottom.rotation.x=-Math.PI/2;
+[cupOuter,cupInner,cupRim,cupBottom].forEach(m=>{m.castShadow=true;m.receiveShadow=true;});
+const cupLid=new THREE.Group();
+const plasticMat=new THREE.MeshPhysicalMaterial({color:0xF2F2EF,roughness:.32,clearcoat:.5,clearcoatRoughness:.2,side:THREE.DoubleSide,envMapIntensity:.8});
+const lidPaperTex=texOf(bases.white); lidPaperTex.encoding=THREE.sRGBEncoding;
+const lidPaperMat=new THREE.MeshPhysicalMaterial({map:lidPaperTex,roughness:.85,side:THREE.DoubleSide,envMapIntensity:.42}); allMats.push(lidPaperMat);
+const lidMesh=new THREE.Mesh(new THREE.BufferGeometry(),plasticMat); lidMesh.castShadow=true; lidMesh.receiveShadow=true;
+const sipHole=new THREE.Mesh(new THREE.CircleGeometry(1,24),new THREE.MeshBasicMaterial({color:0x050505})); sipHole.rotation.x=-Math.PI/2;
+const potTopC=mk(1024,1024), potTopTex=new THREE.CanvasTexture(potTopC); potTopTex.encoding=THREE.sRGBEncoding; potTopTex.anisotropy=8;
+const potTopMat=new THREE.MeshPhysicalMaterial({map:potTopTex,roughness:.85,envMapIntensity:.42}); allMats.push(potTopMat);
+const potTop=new THREE.Mesh(new THREE.CircleGeometry(1,72),potTopMat); potTop.rotation.x=-Math.PI/2;
+cupLid.add(lidMesh,sipHole,potTop);
+cupRig.add(cupOuter,cupInner,cupRim,cupBottom,cupLid);
+function v2(r,y){return new THREE.Vector2(Math.max(0,r)*S,y*S);}
+function swapGeo(mesh,g){mesh.geometry.dispose();mesh.geometry=g;}
+let cylKey='';
+function buildCyl(){
+  const m=st.model, d=cur[m], s=SHAPE[m], rt=d.T/2, rb=d.B/2, h=d.H, th=0.45;
+  const k=m+'|'+d.T.toFixed(2)+'|'+d.B.toFixed(2)+'|'+d.H.toFixed(2)+'|'+st.lidColor;
+  if(k===cylKey) return; cylKey=k;
+  swapGeo(cupOuter,new THREE.LatheGeometry([v2(rb,0),v2(rt,h)],128));
+  swapGeo(cupInner,new THREE.LatheGeometry([v2(rt-th,h),v2(rb-th,0)],128));
+  swapGeo(cupRim,new THREE.TorusGeometry((rt+s.rim*0.35)*S,s.rim*S,14,128)); cupRim.rotation.x=Math.PI/2; cupRim.position.y=(h-s.rim*0.25)*S;
+  cupBottom.scale.set((rb-th)*S,(rb-th)*S,1); cupBottom.position.y=s.inset*S;
+  if(m==='copo'){
+    const p=[[0,11.5],[rt*0.5,11.5],[rt*0.58,10.6],[rt-4.5,10.3],[rt-3.4,7.8],[rt-1.2,7.1],[rt+1.4,5.6],[rt+2.3,3.8],[rt+2.5,1.2],[rt+2.1,-1.2],[rt+2.7,-3.2],[rt+2.5,-5.6]];
+    swapGeo(lidMesh,new THREE.LatheGeometry(p.map(q=>v2(q[0],q[1])),128));
+    lidMesh.material=plasticMat; plasticMat.color.copy(lin(st.lidColor==='black'?0x1B1B1B:0xF2F2EF));
+    sipHole.visible=true; sipHole.scale.set(4.2*S,1.6*S,1); sipHole.position.set(0,10.35*S,(rt-7.2)*S);
+    potTop.visible=false;
+  } else {
+    const p=[[0,3.2],[rt-2.2,3.2],[rt-0.6,2.8],[rt+1.4,2.0],[rt+2.7,0.6],[rt+3.0,-3.5],[rt+2.7,-7]];
+    swapGeo(lidMesh,new THREE.LatheGeometry(p.map(q=>v2(q[0],q[1])),128));
+    lidMesh.material=lidPaperMat; sipHole.visible=false;
+    potTop.visible=true; potTop.scale.set((rt-2.2)*S,(rt-2.2)*S,1); potTop.position.y=3.25*S;
+  }
+}
+function paintCyl(){
+  const m=st.model; if(!isCyl(m)) return;
+  const d=st.D[m], circ=Math.PI*(d.T+d.B)/2, slant=Math.hypot(d.H,(d.T-d.B)/2);
+  const N=2048, M=1024, x=cupWallC.getContext('2d'), kx=N/circ, ky=M/slant;
+  x.setTransform(1,0,0,1,0,0);
+  const pat=x.createPattern(bases[outerC()],'repeat'); pat.setTransform(new DOMMatrix().scale(TILE*kx/1024,TILE*ky/1024));
+  x.fillStyle=pat; x.fillRect(0,0,N,M);
+  const lh=Math.min(slant*(m==='pote'?0.32:0.2),circ*0.1), lw=lh*1024/340;
+  [0,N].forEach(cx=>x.drawImage(logoC,cx-lw*kx/2,M*0.46-lh*ky/2,lw*kx,lh*ky));
+  x.save(); x.translate(N/2,M*0.3); x.scale(kx*0.1,ky*0.1); // 1 unit = 0.1 mm
+  const ts=Math.min(slant*0.06,6)*10; x.fillStyle=INK; x.textAlign='center';
+  x.font='700 '+ts+'px '+FONT; x.fillText(m==='copo'?'Copo de papel':'Pote de papel',0,0);
+  x.font='500 '+(ts*0.8)+'px '+FONT; x.globalAlpha=.8; x.fillText(st.size[m]?(st.size[m]+' ml'):('≈ '+fmtMl(cylVol(m,d))),0,ts*1.4); x.globalAlpha=1;
+  recycle(x,0,ts*3.2,ts*1.1,INK);
+  x.font='500 '+(ts*0.65)+'px '+FONT; x.fillText('Papel de fonte responsável',0,ts*5);
+  x.restore();
+  cupWallTex.needsUpdate=true;
+  const y=potTopC.getContext('2d'); y.setTransform(1,0,0,1,0,0);
+  const kk=1024/d.T; const pt=y.createPattern(bases[outerC()],'repeat'); pt.setTransform(new DOMMatrix().scale(TILE*kk/1024,TILE*kk/1024));
+  y.fillStyle=pt; y.fillRect(0,0,1024,1024);
+  y.strokeStyle='rgba(60,40,20,.25)'; y.lineWidth=6; y.beginPath(); y.arc(512,512,440,0,Math.PI*2); y.stroke();
+  y.drawImage(logoC,512-330,512-110,660,220);
+  potTopTex.needsUpdate=true;
+  [cupInnerTex,rimTex,lidPaperTex].forEach(t=>{t.image=bases[outerC()];t.needsUpdate=true;});
+  cupInnerTex.image=bases[st.color==='kraft'?'kraft':'white']; cupInnerTex.needsUpdate=true;
+}
+function layoutCyl(){
+  buildCyl();
+  const m=st.model, d=cur[m];
+  cupOuterMat.map.repeat.set(1,1);
+  rimTex.repeat.set(Math.PI*d.T/TILE,0.1); lidPaperTex.repeat.set(d.T/TILE,1); cupInnerTex.repeat.set(Math.PI*d.T/TILE,d.H/TILE);
+  const drop=Math.max(70,d.H*0.9);
+  const off=lidOffset(drop);
+  cupLid.visible=lidT>0.002;
+  cupLid.position.set(0,(d.H+off)*S,0);
+  cupLid.rotation.z=(off/drop)*0.35; cupLid.rotation.x=(off/drop)*0.15;
+  blob.scale.set(d.B*1.9*S,d.B*1.9*S,1);
+}
+
+/* ===== shared helpers for shaped (non-box) paper parts ===== */
+function lin(h){return new THREE.Color(h).convertSRGBToLinear();}
+function lerp3(a,b,s){return [a[0]+(b[0]-a[0])*s,a[1]+(b[1]-a[1])*s,a[2]+(b[2]-a[2])*s];}
+function dist3(a,b){return Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);}
+// quad wall p0 bottom-left, p1 bottom-right, p2 top-right, p3 top-left (counter-clockwise seen from outside), mm
+function quadGeo(p0,p1,p2,p3,dip,segs,u0){
+  segs=segs||1; u0=u0||0; const pos=[],uv=[],idx=[]; const w=dist3(p0,p1), h=(dist3(p0,p3)+dist3(p1,p2))/2;
+  for(let i=0;i<=segs;i++){
+    const s=i/segs, b=lerp3(p0,p1,s), t=lerp3(p3,p2,s), d=dip?dip(u0+s*w,s):0;
+    const L=dist3(b,t)||1, tt=lerp3(t,b,Math.min(0.95,d/L));
+    pos.push(b[0]*S,b[1]*S,b[2]*S, tt[0]*S,tt[1]*S,tt[2]*S);
+    uv.push((u0+s*w)/TILE,0,(u0+s*w)/TILE,(h-d)/TILE);
+    if(i<segs){const a=i*2; idx.push(a,a+2,a+1, a+1,a+2,a+3);}
+  }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+const shapedOuter=surfMat('outer'), shapedInner=surfMat('inner'); shapedInner.side=THREE.BackSide;
+function shell(parent){ // returns {add(geo)} keeping outer+inner meshes in a pool
+  const pool=[]; let n=0;
+  return {reset(){n=0;}, add(g){ let p=pool[n]; if(!p){p={o:new THREE.Mesh(g,shapedOuter),i:new THREE.Mesh(g,shapedInner)}; p.o.castShadow=true;p.o.receiveShadow=true;p.i.receiveShadow=true; parent.add(p.o,p.i); pool.push(p);} else {p.o.geometry.dispose(); p.o.geometry=g; p.i.geometry=g;} p.o.visible=p.i.visible=true; n++; },
+    end(){for(let k=n;k<pool.length;k++){pool[k].o.visible=pool[k].i.visible=false;}}};
+}
+function placeDecal(dm,center,normal,w,h){dm.position.set(center[0]*S,center[1]*S,center[2]*S); dm.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),new THREE.Vector3(normal[0],normal[1],normal[2]).normalize()); dm.scale.set(w*S,h*S,1);}
+function quadCenterNormal(p0,p1,p2,p3,off){const c=[(p0[0]+p1[0]+p2[0]+p3[0])/4,(p0[1]+p1[1]+p2[1]+p3[1])/4,(p0[2]+p1[2]+p2[2]+p3[2])/4];
+  const a=new THREE.Vector3(p1[0]-p0[0],p1[1]-p0[1],p1[2]-p0[2]), b=new THREE.Vector3(p3[0]-p0[0],p3[1]-p0[1],p3[2]-p0[2]); const n=a.cross(b).normalize();
+  return {c:[c[0]+n.x*(off||0.06),c[1]+n.y*(off||0.06),c[2]+n.z*(off||0.06)], n:[n.x,n.y,n.z]};}
+// tapered tray: r0 bottom rect {w,d,y}, r1 top rect, cap 'r0'|'r1'; z offset dz; returns geos and wall corner list
+function trayParts(sh,r0,r1,cap,dz,dips){
+  dz=dz||0; dips=dips||{};
+  const c=(r,sx,sz)=>[sx*r.w/2,r.y,sz*r.d/2+dz];
+  const walls={
+    front:[c(r0,-1,1),c(r0,1,1),c(r1,1,1),c(r1,-1,1)],
+    right:[c(r0,1,1),c(r0,1,-1),c(r1,1,-1),c(r1,1,1)],
+    back:[c(r0,1,-1),c(r0,-1,-1),c(r1,-1,-1),c(r1,1,-1)],
+    left:[c(r0,-1,-1),c(r0,-1,1),c(r1,-1,1),c(r1,-1,-1)]
+  };
+  const flip=r1.y<r0.y;
+  Object.keys(walls).forEach(k=>{let q=walls[k]; if(flip)q=[q[1],q[0],q[3],q[2]]; walls[k]=q; sh.add(quadGeo(q[0],q[1],q[2],q[3],dips[k],dips[k]?48:1));});
+  if(cap==='r0'){const r=r0; sh.add(quadGeo([-r.w/2,r.y,-r.d/2+dz],[r.w/2,r.y,-r.d/2+dz],[r.w/2,r.y,r.d/2+dz],[-r.w/2,r.y,r.d/2+dz]));}
+  if(cap==='r1'){const r=r1; sh.add(quadGeo([-r.w/2,r.y,r.d/2+dz],[r.w/2,r.y,r.d/2+dz],[r.w/2,r.y,-r.d/2+dz],[-r.w/2,r.y,-r.d/2+dz]));}
+  return walls;
+}
+function rng(seed){return function(){seed=(seed*16807)%2147483647;return (seed-1)/2147483646;};}
+
+/* ===== RIG 4: caixa de hambúrguer (concha cônica) ===== */
+const hambRig=new THREE.Group(); scene.add(hambRig);
+const hambBase=new THREE.Group(), hambPivot=new THREE.Group(); hambRig.add(hambBase,hambPivot);
+const hambShB=shell(hambBase), hambShL=shell(hambPivot);
+const hambLogoTop=decal(logoMat), hambLogoF=decal(logoMat); hambPivot.add(hambLogoTop); hambBase.add(hambLogoF);
+let hambKey='';
+function layoutHamb(){
+  const d=cur.hamb, W=d.W,D=d.D,H=d.H, hb=H/2, tp=0.82;
+  const k=[W,D,H].map(v=>v.toFixed(1)).join('|');
+  if(k!==hambKey){ hambKey=k;
+    hambShB.reset(); const wB=trayParts(hambShB,{w:W*tp,d:D*tp,y:0},{w:W,d:D,y:hb},'r0'); hambShB.end();
+    hambShL.reset(); const wL=trayParts(hambShL,{w:W,d:D,y:0},{w:W*tp,d:D*tp,y:hb},'r1',D/2); hambShL.end();
+    const lw=Math.min(W*tp*0.62,D*tp*0.6*3); placeDecal(hambLogoTop,[0,hb+0.08,D/2],[0,1,0],lw,lw*340/1024);
+    const q=wB.front, cn=quadCenterNormal(q[0],q[1],q[2],q[3]); const fw=Math.min(W*0.5,hb*0.55*3); placeDecal(hambLogoF,cn.c,cn.n,fw,fw*340/1024);
+  }
+  hambPivot.position.set(0,hb*S,-D/2*S);
+  hambPivot.rotation.x=-ease(openness)*THREE.MathUtils.degToRad(108);
+  blob.scale.set(W*1.3*S,D*1.3*S,1);
+}
+
+/* ===== RIG 5: caixa de batata frita (cônica, frente curva) ===== */
+const friesRig=new THREE.Group(); scene.add(friesRig);
+const friesSh=shell(friesRig); const friesLogo=decal(logoMat); friesRig.add(friesLogo);
+const friesMat=new THREE.MeshStandardMaterial({color:lin(0xE8B24A),roughness:.62});
+const friesMat2=new THREE.MeshStandardMaterial({color:lin(0xD9993A),roughness:.66});
+const fries=[]; for(let i=0;i<34;i++){const m=new THREE.Mesh(U,i%3?friesMat:friesMat2); m.castShadow=true; m.receiveShadow=true; friesRig.add(m); fries.push(m);}
+let friesKey='';
+function layoutFries(){
+  const d=cur.batata, W=d.W,D=d.D,H=d.H, k=[W,D,H].map(v=>v.toFixed(1)).join('|');
+  if(k===friesKey) return; friesKey=k;
+  const bw=W*0.72, bd=D*0.68, dipF=H*0.26;
+  friesSh.reset();
+  const walls=trayParts(friesSh,{w:bw,d:bd,y:0},{w:W,d:D,y:H},'r0',0,{
+    front:(u,s)=>dipF*Math.sin(Math.PI*s), back:(u,s)=>H*0.04*Math.sin(Math.PI*s),
+    left:(u,s)=>dipF*0.0, right:(u,s)=>0});
+  friesSh.end();
+  const q=walls.front, cn=quadCenterNormal(q[0],q[1],q[2],q[3]);
+  const fw=Math.min(W*0.62,(H-dipF)*0.5*3); const cy=(H-dipF)*0.45;
+  placeDecal(friesLogo,[0,cy,(bd/2+(D-bd)/2*cy/H)+0.08],cn.n,fw,fw*340/1024);
+  const r=rng(7);
+  fries.forEach((m,i)=>{const len=H*(0.5+r()*0.32), x=(r()-.5)*W*0.5, z=(r()-.5)*D*0.38;
+    m.scale.set(7*S,len*S,7*S); m.position.set(x*S,(H*0.5+len/2)*S,z*S); m.rotation.set((r()-.5)*0.18,r()*Math.PI,(r()-.5)*0.22);});
+  blob.scale.set(W*1.2*S,D*1.4*S,1);
+}
+
+/* ===== RIG 6: bandejas com tampa articulada (sushi, salgados, pizza) ===== */
+const trayRig=new THREE.Group(); scene.add(trayRig);
+const tF=rigMesh({thin:'z',outer:1,F:'y'}), tB=rigMesh({thin:'z',outer:-1,F:'y'}), tL=rigMesh({thin:'x',outer:-1,F:'y'}), tR=rigMesh({thin:'x',outer:1,F:'y'}), tBot=rigMesh({thin:'y',outer:-1,F:'z'});
+const tPivot=new THREE.Group();
+const tTop=rigMesh({thin:'y',outer:1,F:'z'});
+const tSf=rigMesh({thin:'y',outer:1,F:'z'}), tSb=rigMesh({thin:'y',outer:1,F:'z'}), tSl=rigMesh({thin:'y',outer:1,F:'z'}), tSr=rigMesh({thin:'y',outer:1,F:'z'});
+const tFlap=rigMesh({thin:'z',outer:1,F:'y'});
+const petMat=new THREE.MeshPhysicalMaterial({color:0xffffff,roughness:.04,metalness:0,transparent:true,opacity:.18,envMapIntensity:1.4,clearcoat:1,side:THREE.DoubleSide});
+const tPet=new THREE.Mesh(P,petMat); tPet.rotation.x=-Math.PI/2;
+const tLogoTop=decal(logoMat); tLogoTop.rotation.x=-Math.PI/2; const tLogoFlap=decal(logoMat);
+tPivot.add(tTop,tSf,tSb,tSl,tSr,tFlap,tPet,tLogoTop,tLogoFlap);
+trayRig.add(tF,tB,tL,tR,tBot,tPivot);
+// food
+const coxMat=new THREE.MeshStandardMaterial({color:lin(0xB8682A),roughness:.78,bumpMap:texOf(bases.kraft),bumpScale:.02});
+const coxGeo=(function(){const pts=[];for(let i=0;i<=24;i++){const t=i/24;pts.push(new THREE.Vector2(Math.sin(Math.PI*Math.pow(t,0.62))*(1-0.3*t)*0.5,t));}return new THREE.LatheGeometry(pts,32);})();
+const sushiTopC=mk(256,256); (function(){const x=sushiTopC.getContext('2d');x.fillStyle='#16201a';x.fillRect(0,0,256,256);x.fillStyle='#F4F1EA';x.beginPath();x.arc(128,128,112,0,Math.PI*2);x.fill();
+  for(let i=0;i<500;i++){x.fillStyle=Math.random()<.5?'rgba(220,214,200,.8)':'rgba(255,255,255,.9)';x.beginPath();x.ellipse(128+(Math.random()-.5)*200,128+(Math.random()-.5)*200,4,2,Math.random()*3,0,Math.PI*2);x.fill();}
+  x.fillStyle='#16201a';x.beginPath();x.arc(128,128,118,0,Math.PI*2);x.arc(128,128,108,0,Math.PI*2,true);x.fill();
+  x.fillStyle='#F07A45';x.beginPath();x.arc(120,124,40,0,Math.PI*2);x.fill();x.fillStyle='#7FB24A';x.beginPath();x.arc(150,150,16,0,Math.PI*2);x.fill();})();
+const sushiTopTex=new THREE.CanvasTexture(sushiTopC); sushiTopTex.encoding=THREE.sRGBEncoding;
+const sushiMats=[new THREE.MeshStandardMaterial({color:lin(0x1A241D),roughness:.55}),new THREE.MeshStandardMaterial({map:sushiTopTex,roughness:.7}),new THREE.MeshStandardMaterial({color:lin(0x1A241D),roughness:.6})];
+const sushiGeo=new THREE.CylinderGeometry(0.5,0.5,1,40);
+const food=[]; for(let i=0;i<40;i++){const m=new THREE.Mesh(coxGeo,coxMat); m.castShadow=true; m.receiveShadow=true; trayRig.add(m); food.push(m);}
+let trayKey='';
+function layoutTray(){
+  const m=st.model, d=cur[m], W=d.W,D=d.D,H=d.H,t=T, hw=H-t, visor=(m!=='pizza')&&st.visor;
+  tF.scale.set(W*S,hw*S,t*S); tF.position.set(0,hw/2*S,(D/2-t/2)*S);
+  tB.scale.set(W*S,hw*S,t*S); tB.position.set(0,hw/2*S,(-D/2+t/2)*S);
+  tL.scale.set(t*S,hw*S,(D-2*t)*S); tL.position.set((-W/2+t/2)*S,hw/2*S,0);
+  tR.scale.set(t*S,hw*S,(D-2*t)*S); tR.position.set((W/2-t/2)*S,hw/2*S,0);
+  tBot.scale.set((W-0.02)*S,t*S,(D-0.02)*S); tBot.position.set(0,t/2*S,0);
+  tPivot.position.set(0,hw*S,-D/2*S); tPivot.rotation.x=-ease(openness)*THREE.MathUtils.degToRad(112);
+  tTop.visible=!visor; [tSf,tSb,tSl,tSr,tPet].forEach(o=>o.visible=visor);
+  tTop.scale.set(W*S,t*S,(D+t)*S); tTop.position.set(0,t/2*S,(D+t)/2*S);
+  const mg=Math.min(W,D)*0.2, Dl=D+t;
+  tSf.scale.set(W*S,t*S,mg*S); tSf.position.set(0,t/2*S,(Dl-mg/2)*S);
+  tSb.scale.set(W*S,t*S,mg*S); tSb.position.set(0,t/2*S,mg/2*S);
+  tSl.scale.set(mg*S,t*S,(Dl-2*mg)*S); tSl.position.set((-W/2+mg/2)*S,t/2*S,Dl/2*S);
+  tSr.scale.set(mg*S,t*S,(Dl-2*mg)*S); tSr.position.set((W/2-mg/2)*S,t/2*S,Dl/2*S);
+  tPet.scale.set((W-2*mg+8)*S,(Dl-2*mg+8)*S,1); tPet.position.set(0,(t*0.5)*S,Dl/2*S);
+  const fh=Math.min(hw*(m==='pizza'?0.7:0.75),45);
+  tFlap.scale.set(W*S,fh*S,t*S); tFlap.position.set(0,(t-fh/2)*S,(Dl+t/2)*S);
+  const lw=Math.min(W*0.55,D*0.4*3); tLogoTop.scale.set(lw*S,lw*340/1024*S,1); tLogoTop.position.set(0,(t+0.06)*S,Dl/2*S); tLogoTop.visible=!visor;
+  const fw=Math.min(W*0.42,fh*0.6*3); tLogoFlap.scale.set(fw*S,fw*340/1024*S,1); tLogoFlap.position.set(0,(t-fh/2)*S,(Dl+t+0.06)*S); tLogoFlap.visible=visor||m!=='pizza';
+  const k=m+'|'+[W,D,H].map(v=>v.toFixed(0)).join('|');
+  if(k!==trayKey){ trayKey=k; let n=0;
+    if(m==='salgado'||m==='sushi'){
+      const sp=m==='sushi'?32:30, r=m==='sushi'?13:12.5, nx=Math.max(1,Math.floor((W-14)/sp)), nz=Math.max(1,Math.floor((D-14)/sp));
+      const hh=m==='sushi'?Math.min(22,hw-4):Math.min(34,hw-4);
+      for(let i=0;i<nx;i++)for(let j=0;j<nz;j++){ if(n>=food.length)break; const f=food[n++];
+        const x=(i-(nx-1)/2)*sp, z=(j-(nz-1)/2)*sp;
+        if(m==='sushi'){f.geometry=sushiGeo; f.material=sushiMats; f.scale.set(r*2*S,hh*S,r*2*S); f.position.set(x*S,(t+hh/2)*S,z*S); f.rotation.set(0,0,0);}
+        else {f.geometry=coxGeo; f.material=coxMat; f.scale.set(r*2*S,hh*S,r*2*S); f.position.set(x*S,t*S,z*S); f.rotation.set(0,(i*7+j*3)%6,0);}
+        f.visible=true; }
+    }
+    for(;n<food.length;n++) food[n].visible=false;
+  }
+  blob.scale.set(W*1.35*S,D*1.4*S,1);
+}
+
+/* ===== RIG 7: sacolas ===== */
+const bagRig=new THREE.Group(); scene.add(bagRig);
+const bagSh=shell(bagRig); const bagLogo=decal(logoMat), bagInfo=decal(bagInfoMat); bagInfo.rotation.y=Math.PI; bagRig.add(bagLogo,bagInfo);
+const ropeC=mk(64,256); const ropeTex=new THREE.CanvasTexture(ropeC); ropeTex.wrapS=ropeTex.wrapT=THREE.RepeatWrapping; ropeTex.encoding=THREE.sRGBEncoding;
+const ropeMat=new THREE.MeshStandardMaterial({map:ropeTex,roughness:.9});
+const eyeMat=new THREE.MeshPhysicalMaterial({color:0xD9B45A,metalness:1,roughness:.22,envMap:metalEnv,envMapIntensity:2.2});
+const handles=[], eyelets=[];
+for(let i=0;i<2;i++){const h=new THREE.Mesh(new THREE.BufferGeometry(),ropeMat); h.castShadow=true; bagRig.add(h); handles.push(h);}
+for(let i=0;i<4;i++){const e=new THREE.Mesh(new THREE.TorusGeometry(1,0.32,12,32),eyeMat); e.castShadow=true; bagRig.add(e); eyelets.push(e);}
+const CORD={black:'#1B1B1B',white:'#EFEFEA',yellow:'#FFC21A',pink:'#E6179B'};
+const EYE={gold:0xD9B45A,silver:0xC9CED6,black:0x202020};
+function paintRope(){
+  const x=ropeC.getContext('2d'), h=st.handle;
+  const base=h==='cordao'?CORD[st.cord]:COL[outerC()];
+  x.fillStyle=base; x.fillRect(0,0,64,256);
+  x.strokeStyle=h==='chato'?'rgba(0,0,0,.06)':'rgba(0,0,0,.28)'; x.lineWidth=h==='chato'?2:7;
+  if(h!=='chato'){for(let i=-8;i<16;i++){x.beginPath();x.moveTo(0,i*20);x.lineTo(64,i*20+30);x.stroke();}}
+  x.strokeStyle='rgba(255,255,255,.18)'; x.lineWidth=3; if(h!=='chato'){for(let i=-8;i<16;i++){x.beginPath();x.moveTo(0,i*20+8);x.lineTo(64,i*20+38);x.stroke();}}
+  ropeTex.needsUpdate=true; eyeMat.color.copy(lin(EYE[st.eyelet]));
+}
+function ribbonGeo(curve,width){
+  const N=80,pos=[],uv=[],idx=[];
+  for(let i=0;i<=N;i++){const s=i/N,p=curve.getPointAt(s),tg=curve.getTangentAt(s); const nx=-tg.y, ny=tg.x, l=Math.hypot(nx,ny)||1;
+    pos.push(p.x+nx/l*width/2,p.y+ny/l*width/2,p.z, p.x-nx/l*width/2,p.y-ny/l*width/2,p.z); uv.push(0,s*6,1,s*6);
+    if(i<N){const a=i*2; idx.push(a,a+1,a+2,a+1,a+3,a+2);} }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+let bagKey='';
+function layoutBag(){
+  const d=cur.sacola, W=d.W,D=d.D,H=d.H, sos=st.bagType==='sos';
+  const k=[W,D,H].map(v=>v.toFixed(1)).join('|')+st.bagType+st.handle+st.cord+st.eyelet;
+  if(k===bagKey) return; bagKey=k;
+  const c=D*0.14, zig=sos?((u)=>{const p=9, f=(u%p)/p; return 4.5*(f<.5?f*2:(1-f)*2);}):null;
+  bagSh.reset();
+  const F=[[-W/2,0,D/2],[W/2,0,D/2],[W/2,H,D/2],[-W/2,H,D/2]];
+  bagSh.add(quadGeo(F[0],F[1],F[2],F[3],zig,zig?120:1));
+  bagSh.add(quadGeo([W/2,0,-D/2],[-W/2,0,-D/2],[-W/2,H,-D/2],[W/2,H,-D/2],zig,zig?120:1));
+  bagSh.add(quadGeo([W/2,0,D/2],[W/2-c,0,0],[W/2-c,H,0],[W/2,H,D/2],zig,zig?40:1));
+  bagSh.add(quadGeo([W/2-c,0,0],[W/2,0,-D/2],[W/2,H,-D/2],[W/2-c,H,0],zig,zig?40:1,D/2));
+  bagSh.add(quadGeo([-W/2,0,-D/2],[-W/2+c,0,0],[-W/2+c,H,0],[-W/2,H,-D/2],zig,zig?40:1));
+  bagSh.add(quadGeo([-W/2+c,0,0],[-W/2,0,D/2],[-W/2,H,D/2],[-W/2+c,H,0],zig,zig?40:1,D/2));
+  bagSh.add(quadGeo([-W/2,0.3,-D/2],[W/2,0.3,-D/2],[W/2,0.3,D/2],[-W/2,0.3,D/2]));
+  bagSh.end();
+  const lw=Math.min(W*0.6,H*0.35*3); placeDecal(bagLogo,[0,H*(sos?0.5:0.52),D/2+0.08],[0,0,1],lw,lw*340/1024);
+  const iw=Math.min(W*0.4,H*0.3); bagInfo.scale.set(iw*S,iw*1.25*S,1); bagInfo.position.set(0,H*0.45*S,(-D/2-0.08)*S);
+  const showH=!sos, hw=Math.min(W*0.2,55), hh=Math.min(W*0.42,110);
+  handles.forEach(h=>h.visible=showH); eyelets.forEach(e=>e.visible=showH&&st.handle==='cordao');
+  if(showH){
+    [1,-1].forEach((sz,i)=>{
+      let pts, geo; const z0=sz*(D/2), V=(x,y,z)=>new THREE.Vector3(x*S,y*S,z*S);
+      if(st.handle==='cordao'){
+        const y0=H-28, zo=sz*(D/2+2.5);
+        pts=[V(-hw,y0,zo),V(-hw*1.02,y0+hh*0.45,zo+sz*4),V(-hw*0.65,y0+hh*0.95,zo+sz*5),V(0,y0+hh*1.1,zo+sz*5),V(hw*0.65,y0+hh*0.95,zo+sz*5),V(hw*1.02,y0+hh*0.45,zo+sz*4),V(hw,y0,zo)];
+        geo=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),96,3.2*S,12,false);
+        [-hw,hw].forEach((x,j)=>{const e=eyelets[i*2+j]; e.scale.set(5.5*S,5.5*S,5.5*S); e.position.set(x*S,y0*S,(z0+sz*0.6)*S); e.rotation.set(0,0,0);});
+      } else {
+        const zi=z0-sz*1.4, y0=H-38;
+        pts=[V(-hw,y0,zi),V(-hw,H-4,zi),V(-hw*0.95,H+hh*0.55,zi),V(-hw*0.55,H+hh*0.95,zi),V(0,H+hh,zi),V(hw*0.55,H+hh*0.95,zi),V(hw*0.95,H+hh*0.55,zi),V(hw,H-4,zi),V(hw,y0,zi)];
+        const cv=new THREE.CatmullRomCurve3(pts);
+        geo=st.handle==='chato'?ribbonGeo(cv,22*S):new THREE.TubeGeometry(cv,96,2.6*S,10,false);
+      }
+      handles[i].geometry.dispose(); handles[i].geometry=geo;
+      handles[i].material=ropeMat; ropeMat.side=st.handle==='chato'?THREE.DoubleSide:THREE.FrontSide;
+    });
+  }
+  paintRope();
+  blob.scale.set(W*1.3*S,D*1.7*S,1);
+}
+
+/* ===== efeitos especiais no logo ===== */
+const maskC=mk(1024,340), reliefC=mk(1024,340);
+const maskTex=new THREE.CanvasTexture(maskC); maskTex.encoding=THREE.sRGBEncoding; maskTex.anisotropy=8;
+const reliefTex=new THREE.CanvasTexture(reliefC);
+const logoTexInk=logoMat.map;
+function paintMask(){
+  const x=maskC.getContext('2d'); x.clearRect(0,0,1024,340); drawLogo(x,512,250,300,'#FFFFFF',true);
+  const y=reliefC.getContext('2d'); y.filter='none'; y.fillStyle='#000'; y.fillRect(0,0,1024,340); y.filter='blur(6px)'; y.drawImage(maskC,0,0); y.filter='none';
+  maskTex.needsUpdate=true; reliefTex.needsUpdate=true;
+}
+const FOIL={gold:0xD9A83A,silver:0xD5D9E0,copper:0xC9825A};
+function applyEffects(){
+  const m=logoMat, f=FIN[st.fin], fx=st.fx;
+  m.map=fx.hot?maskTex:logoTexInk;
+  m.color.copy(fx.hot?lin(FOIL[st.foil]):new THREE.Color(0xffffff));
+  m.emissive.copy(fx.hot?lin(FOIL[st.foil]).multiplyScalar(0.12):new THREE.Color(0x000000));
+  m.metalness=fx.hot?1:0;
+  m.roughness=fx.hot?0.16:(fx.spot?0.06:f.roughness);
+  m.clearcoat=(fx.spot||fx.hot)?1:f.clearcoat; m.clearcoatRoughness=fx.spot?0.03:(fx.hot?0.1:f.clearcoatRoughness);
+  m.envMap=(fx.hot||fx.spot)?metalEnv:null;
+  m.envMapIntensity=fx.hot?2.4:(fx.spot?1.6:0.42);
+  m.sheen=(fx.hot||fx.spot)?0:f.sheen;
+  m.bumpMap=fx.relevo?reliefTex:null; m.bumpScale=fx.relevo?0.35:0;
+  m.needsUpdate=true;
+}
+
+
+/* ---------- model switching ---------- */
+function bbox(){
+  const m=st.model, d=cur[m];
+  if(m==='cartucho') return {W:d.W,D:d.D,H:d.H};
+  if(m==='caixa') return {W:d.W+2*T,D:d.D+2*T,H:d.H+T+(st.open?80:0)};
+  if(m==='hamb') return {W:d.W,D:d.D,H:d.H+(st.open?d.D*0.6:0)};
+  if(m==='batata') return {W:d.W,D:d.D,H:d.H*1.25};
+  if(m==='sushi'||m==='salgado'||m==='pizza') return {W:d.W,D:d.D+2*T,H:d.H+(st.open?d.D*0.75:0)};
+  if(m==='sacola') return {W:d.W,D:d.D,H:d.H+(st.bagType==='sos'?0:Math.min(d.W*0.42,110))};
+  return {W:d.T+6,D:d.T+6,H:d.H+(st.lid?12:3)};
+}
+function lidTarget(){ if(st.model==='caixa') return st.open?0:1; if(isCyl(st.model)) return st.lid?1:0; return 0; }
+function layout(){
+  const m=st.model, tray=(m==='sushi'||m==='salgado'||m==='pizza');
+  cartRig.visible=m==='cartucho'; cxRig.visible=m==='caixa'; cupRig.visible=isCyl(m); hambRig.visible=m==='hamb'; friesRig.visible=m==='batata'; trayRig.visible=tray; bagRig.visible=m==='sacola';
+  if(m==='cartucho') layoutCart(); else if(m==='caixa') layoutCaixa(); else if(isCyl(m)) layoutCyl(); else if(m==='hamb') layoutHamb(); else if(m==='batata') layoutFries(); else if(tray) layoutTray(); else layoutBag();
+  meshes.forEach(updRep);
+}
+function applyFinish(){
+  const f=FIN[st.fin];
+  allMats.forEach(m=>{m.roughness=f.roughness;m.clearcoat=f.clearcoat;m.clearcoatRoughness=f.clearcoatRoughness;m.sheen=f.sheen;m.needsUpdate=true;});
+  if(typeof applyEffects==='function') applyEffects();
+}
+function applySubstrate(){
+  T=SUB[subKey()].t; const corr=subKey()!=='cartao', bs={cartao:0.0025,E:0.004,B:0.007,C:0.009}[subKey()];
+  surfMats.forEach(m=>{ m.map.image=bases[m.userData.role==='outer'?outerC():innerC()]; m.map.needsUpdate=true;
+    m.bumpMap=corr?m.userData.stripes:m.map; m.bumpScale=bs; m.needsUpdate=true; });
+  paintEdges(); paintLogo(); paintInfo(); paintBottom(); paintCyl();
+  [logoTexInk,infoMat.map,cxInfoMat.map,bagInfoMat.map].forEach(t=>t.needsUpdate=true); paintMask(); paintRope(); applyEffects();
+}
+
+/* ---------- dimension guides ---------- */
+const dimMat=new THREE.LineBasicMaterial({color:0x1FA2F0,depthTest:false,transparent:true});
+const dimGeo=new THREE.BufferGeometry(); dimGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(18*3),3));
+const dimLines=new THREE.LineSegments(dimGeo,dimMat); dimLines.renderOrder=10; scene.add(dimLines);
+const labelsEl=$('labels'); const lab={};
+['W','D','H'].forEach(k=>{const d=document.createElement('div');d.className='dimlabel';d.innerHTML='<span></span><b></b>';labelsEl.appendChild(d);lab[k]=d;});
+const capLab=document.createElement('div'); capLab.className='dimlabel caplabel'; capLab.innerHTML='<b></b>'; labelsEl.appendChild(capLab);
+function updateDims(){
+  const show=st.dims && !dieOn; dimLines.visible=show; [lab.W,lab.D,lab.H,capLab].forEach(d=>d.style.display=show?'block':'none'); if(!show)return;
+  const a=dimGeo.attributes.position.array; let i=0, m=st.model, d=cur[m];
+  const seg=(p,q)=>{a[i++]=p[0]*S;a[i++]=p[1]*S;a[i++]=p[2]*S;a[i++]=q[0]*S;a[i++]=q[1]*S;a[i++]=q[2]*S;};
+  const r=canvas.getBoundingClientRect(), v=new THREE.Vector3();
+  const place=(el,p,tag,txt)=>{v.set(p[0]*S,p[1]*S,p[2]*S).project(camera);el.style.transform='translate('+((v.x+1)/2*r.width)+'px,'+((1-v.y)/2*r.height)+'px) translate(-50%,-50%)';if(el.firstChild.tagName==='SPAN')el.firstChild.textContent=tag;el.lastChild.textContent=txt;};
+  const k=4;
+  if(!isCyl(m)){
+    const W=d.W+(m==='caixa'?2*T:0),D=d.D+(m==='caixa'?2*T:0),H=d.H,o=10, zf=D/2+o, xr=W/2+o;
+    seg([-W/2,0,zf],[W/2,0,zf]); seg([-W/2,0,zf-k],[-W/2,0,zf+k]); seg([W/2,0,zf-k],[W/2,0,zf+k]);
+    seg([xr,0,-D/2],[xr,0,D/2]); seg([xr-k,0,-D/2],[xr+k,0,-D/2]); seg([xr-k,0,D/2],[xr+k,0,D/2]);
+    seg([xr,0,zf],[xr,H,zf]); seg([xr-k,0,zf],[xr+k,0,zf]); seg([xr-k,H,zf],[xr+k,H,zf]);
+    place(lab.W,[0,0,zf+12],'L',Math.round(d.W)+' mm'); place(lab.D,[xr+12,0,0],'P',Math.round(d.D)+' mm'); place(lab.H,[xr+10,H/2,zf+10],'A',Math.round(H)+' mm');
+    if(m==='caixa'){capLab.style.display='block'; place(capLab,[0,bbox().H+28,0],'',st.size.caixa?(st.size.caixa+' L'):'≈ '+fmtL(boxVol(d)));} else capLab.style.display='none';
+  } else {
+    const rt=d.T/2, rb=d.B/2, H=d.H, yT=H+(lidT>0.5?18:10), zb=rb+12, xr=rt+12;
+    seg([-rt,yT,0],[rt,yT,0]); seg([-rt,yT-k,0],[-rt,yT+k,0]); seg([rt,yT-k,0],[rt,yT+k,0]);
+    seg([-rb,0,zb],[rb,0,zb]); seg([-rb,0,zb-k],[-rb,0,zb+k]); seg([rb,0,zb-k],[rb,0,zb+k]);
+    seg([xr,0,0],[xr,H,0]); seg([xr-k,0,0],[xr+k,0,0]); seg([xr-k,H,0],[xr+k,H,0]);
+    place(lab.W,[0,yT+9,0],'Ø boca',Math.round(d.T)+' mm'); place(lab.D,[0,0,zb+12],'Ø fundo',Math.round(d.B)+' mm'); place(lab.H,[xr+14,H/2,0],'A',Math.round(H)+' mm');
+    capLab.style.display='block'; place(capLab,[0,yT+32,0],'',st.size[m]?(st.size[m]+' ml'):'≈ '+fmtMl(cylVol(m,d)));
+  }
+  dimGeo.attributes.position.needsUpdate=true;
+}
+
+/* ---------- camera framing & views ---------- */
+const VIEWS={'34':new THREE.Vector3(1,0.62,1.3),front:new THREE.Vector3(0,0.18,1),bottom:new THREE.Vector3(0.55,-1.05,0.8),edge:new THREE.Vector3(1,0.75,1.15)};
+let viewAnim=null, framing=true, focusEdge=false;
+function desiredDist(){
+  if(focusEdge) return Math.max(170, T*40)*S;
+  const b=bbox(); const r=0.5*Math.sqrt(b.W*b.W+b.D*b.D+b.H*b.H)*S*1.08; const aspect=Math.max(.6,Math.min(1.6,camera.aspect)); const f=THREE.MathUtils.degToRad(camera.fov/2);
+  return (r/Math.sin(f))*(aspect<1?1.15/aspect:1)*1.42;
+}
+function setView(name){
+  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===name));
+  focusEdge=(name==='edge');
+  viewAnim={from:camera.position.clone().sub(controls.target).normalize(),to:VIEWS[name].clone().normalize(),t:0};
+  if(st.rot){st.rot=false;controls.autoRotate=false;$('btnRot').setAttribute('aria-pressed','false');}
+  framing=true;
+}
+controls.addEventListener('start',()=>{viewAnim=null;framing=false;});
+
+/* ---------- resize / loop ---------- */
+function resize(){const r=stage.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.setViewOffset(r.width,r.height,0,Math.round(r.height*0.06),r.width,r.height); camera.updateProjectionMatrix();}
+window.addEventListener('resize',resize);
+let last=performance.now(), settleDirty=false;
+function tick(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now;
+  let moving=false; const tg=st.D[st.model], cu=cur[st.model];
+  Object.keys(tg).forEach(k=>{const d=tg[k]-cu[k]; if(Math.abs(d)>0.05){cu[k]+=d*Math.min(1,dt*9);moving=true;} else cu[k]=tg[k];});
+  if(moving) settleDirty=true; else if(settleDirty){settleDirty=false;paintBottom();paintInfo();paintCyl();[infoMat,cxInfoMat,bagInfoMat].forEach(m=>m.map.needsUpdate=true);}
+  const to=(HINGED.includes(st.model)&&st.open)?1:0; openness+=(to-openness)*Math.min(1,dt*3.2); if(Math.abs(to-openness)<0.001)openness=to;
+  const lt=lidTarget(); if(lidT!==lt){ const sp=lt>lidT?1/1.0:1/0.55; lidT=lt>lidT?Math.min(lt,lidT+dt*sp):Math.max(lt,lidT-dt*sp); }
+  layout();
+  const b=bbox();
+  const tgt=focusEdge?new THREE.Vector3((b.W/2-4)*S,(st.model==='caixa'?cur.caixa.H:b.H)*S,(b.D/2-4)*S):new THREE.Vector3(0,b.H/2*S,0);
+  controls.target.lerp(tgt,Math.min(1,dt*6));
+  let dir=camera.position.clone().sub(controls.target); let dist=dir.length(); dir.normalize();
+  if(viewAnim){viewAnim.t=Math.min(1,viewAnim.t+dt/0.8); const e=ease(viewAnim.t); dir=viewAnim.from.clone().lerp(viewAnim.to,e).normalize(); if(viewAnim.t>=1)viewAnim=null;}
+  if(framing||moving){const want=desiredDist(); dist+=(want-dist)*Math.min(1,dt*4); if(!moving&&Math.abs(want-dist)<want*0.003&&!viewAnim)framing=false;}
+  camera.position.copy(controls.target).addScaledVector(dir,dist);
+  controls.update();
+  renderer.render(scene,camera);
+  updateDims();
+  requestAnimationFrame(tick);
+}
+
+/* ---------- dielines (planificação) ---------- */
+let dieOn=false;
+function renderDie(o){
+  const pl=pts=>pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join(' ');
+  const sw=o.maxX-o.minX, sh=o.maxY-o.minY, m=Math.max(sw,sh)*0.09, fs=Math.max(sw,sh)/52, lw=Math.max(sw,sh)/600;
+  let s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="'+(o.minX-m*1.3)+' '+(o.minY-m*1.3)+' '+(sw+m*2.6)+' '+(sh+m*2.3)+'" role="img" aria-label="Planificação">';
+  s+='<defs><pattern id="hatch" width="'+fs*0.5+'" height="'+fs*0.5+'" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="'+fs*0.5+'" stroke="#1FA2F0" stroke-width="'+lw*1.4+'" opacity=".7"/></pattern></defs>';
+  (o.glue||[]).forEach(p=>s+='<polygon points="'+pl(p)+'" fill="url(#hatch)"/>');
+  (o.glueD||[]).forEach(d=>s+='<path d="'+d+'" fill="url(#hatch)"/>');
+  (o.cuts||[]).forEach(p=>s+='<polyline points="'+pl(p)+'" fill="none" stroke="#FFFFFF" stroke-width="'+lw*1.6+'" stroke-linejoin="round"/>');
+  (o.cutD||[]).forEach(d=>s+='<path d="'+d+'" fill="none" stroke="#FFFFFF" stroke-width="'+lw*1.6+'" stroke-linejoin="round"/>');
+  const dash='stroke-dasharray="'+fs*0.45+' '+fs*0.3+'"';
+  (o.folds||[]).forEach(p=>s+='<polyline points="'+pl(p)+'" fill="none" stroke="#FFC21A" stroke-width="'+lw*1.4+'" '+dash+'/>');
+  (o.foldD||[]).forEach(d=>s+='<path d="'+d+'" fill="none" stroke="#FFC21A" stroke-width="'+lw*1.4+'" '+dash+'/>');
+  (o.labels||[]).forEach(([x,y,t,rot])=>s+='<text x="'+x+'" y="'+y+'" fill="'+(t==='COLA'?'#9fd3f7':'#8a8a8a')+'" font-family="JetBrains Mono,monospace" font-size="'+fs*(t==='COLA'?0.6:0.8)+'" text-anchor="middle" dominant-baseline="middle"'+(rot?' transform="rotate('+rot+' '+x+' '+y+')"':'')+'>'+t+'</text>');
+  const yT=o.minY-m*0.6, xL=o.minX-m*0.55;
+  s+='<g stroke="#1FA2F0" stroke-width="'+lw*1.2+'"><line x1="'+o.minX+'" y1="'+yT+'" x2="'+o.maxX+'" y2="'+yT+'"/><line x1="'+o.minX+'" y1="'+(yT-fs*0.4)+'" x2="'+o.minX+'" y2="'+(yT+fs*0.4)+'"/><line x1="'+o.maxX+'" y1="'+(yT-fs*0.4)+'" x2="'+o.maxX+'" y2="'+(yT+fs*0.4)+'"/>';
+  s+='<line x1="'+xL+'" y1="'+o.minY+'" x2="'+xL+'" y2="'+o.maxY+'"/><line x1="'+(xL-fs*0.4)+'" y1="'+o.minY+'" x2="'+(xL+fs*0.4)+'" y2="'+o.minY+'"/><line x1="'+(xL-fs*0.4)+'" y1="'+o.maxY+'" x2="'+(xL+fs*0.4)+'" y2="'+o.maxY+'"/></g>';
+  s+='<text x="'+(o.minX+sw/2)+'" y="'+(yT-fs*0.6)+'" fill="#1FA2F0" font-family="JetBrains Mono,monospace" font-size="'+fs+'" text-anchor="middle">'+sw.toFixed(0)+' mm</text>';
+  s+='<text x="'+(xL-fs*0.7)+'" y="'+((o.minY+o.maxY)/2)+'" fill="#1FA2F0" font-family="JetBrains Mono,monospace" font-size="'+fs+'" text-anchor="middle" transform="rotate(-90 '+(xL-fs*0.7)+' '+((o.minY+o.maxY)/2)+')">'+sh.toFixed(0)+' mm</text>';
+  s+='</svg>';
+  $('dieSvg').innerHTML=s;
+  $('sheetSize').textContent=o.note||('Chapa aberta ≈ '+sw.toFixed(0)+' × '+sh.toFixed(0)+' mm');
+}
+function dieCart(){
+  const d=st.D.cartucho, W=d.W,D=d.D,H=d.H, g=Math.min(15,Math.max(8,D*0.5)), tl=Math.min(15,D*0.55), df=Math.min(D*0.85,W*0.45);
+  const x1=g, x2=g+W, x3=g+W+D, x4=g+2*W+D, x5=g+2*W+2*D;
+  const cuts=[], folds=[], glue=[], labels=[];
+  [x1,x2,x3,x4].forEach(x=>folds.push([[x,0],[x,H]]));
+  cuts.push([[x5,0],[x5,H]]);
+  cuts.push([[x1,0],[0,4],[0,H-4],[x1,H]]); glue.push([[x1,0],[0,4],[0,H-4],[x1,H]]);
+  const lidAt=(x,y0,dn)=>{const y1=y0+dn*D, y2=y1+dn*tl;
+    cuts.push([[x,y0],[x,y1],[x+2,y2-dn*4],[x+6,y2],[x+W-6,y2],[x+W-2,y2-dn*4],[x+W,y1],[x+W,y0]]);
+    folds.push([[x,y0],[x+W,y0]]); folds.push([[x,y1],[x+W,y1]]); labels.push([x+W/2,y0+dn*D/2,'TAMPA']);};
+  const dust=(x,y0,dn)=>{const y1=y0+dn*df; cuts.push([[x,y0],[x+1.5,y1-dn*df*0.15],[x+5,y1],[x+D-5,y1],[x+D-1.5,y1-dn*df*0.15],[x+D,y0]]); folds.push([[x,y0],[x+D,y0]]);};
+  lidAt(x3,0,-1); dust(x2,0,-1); dust(x4,0,-1); cuts.push([[x1,0],[x2,0]]);
+  let maxY=H;
+  if(st.closure==='tuck'){ lidAt(x1,H,1); dust(x2,H,1); dust(x4,H,1); cuts.push([[x3,H],[x4,H]]); maxY=H+D+tl; }
+  else if(st.closure==='auto'){ const a=D/2, hk=D*0.22;
+    [x1,x3].forEach(x=>{cuts.push([[x,H],[x,H+a],[x+W/2,H+a],[x+W/2+3,H+a+hk],[x+W-4,H+a+hk],[x+W,H]]); folds.push([[x,H],[x+W,H]]); folds.push([[x+W,H],[x+W-Math.min(a,W/2),H+a]]);});
+    [x2,x4].forEach(x=>{cuts.push([[x,H],[x+D*0.1,H+a],[x+D-2,H+a],[x+D,H]]); folds.push([[x,H],[x+D,H]]); folds.push([[x,H],[x+D*0.55,H+a]]); glue.push([[x,H],[x+D*0.55,H+a],[x+D*0.1,H+a]]);});
+    maxY=H+a+hk;
+  } else { const a=D/2;
+    [x1,x3].forEach(x=>{cuts.push([[x,H],[x+2,H+a*0.9],[x+W*0.3,H+a*0.9],[x+W*0.3,H+a*1.3],[x+W*0.7,H+a*1.3],[x+W*0.7,H+a*0.9],[x+W-2,H+a*0.9],[x+W,H]]); folds.push([[x,H],[x+W,H]]);});
+    [x2,x4].forEach(x=>{cuts.push([[x,H],[x+D*0.15,H+a*0.8],[x+D*0.4,H+a*0.8],[x+D*0.4,H+a*0.55],[x+D*0.85,H+a*0.55],[x+D,H]]); folds.push([[x,H],[x+D,H]]);});
+    maxY=H+a*1.3; }
+  labels.push([x1+W/2,H/2,'FRENTE'],[x2+D/2,H/2,'LATERAL'],[x3+W/2,H/2,'COSTAS'],[x4+D/2,H/2,'LATERAL'],[g/2,H/2,'COLA',-90]);
+  return {cuts,folds,glue,labels,minX:0,maxX:x5,minY:-(D+tl),maxY};
+}
+function dieCyl(){
+  const m=st.model, d=st.D[m], s=SHAPE[m], T0=d.T, B0=Math.min(d.B,d.T-1), Hh=d.H;
+  const sl=Math.hypot(Hh,(T0-B0)/2), R2=sl*T0/(T0-B0), R1=R2-sl, th=Math.PI*T0/R2, ga=8/R2;
+  const a0=Math.PI/2-th/2, a1=Math.PI/2+th/2, a1g=a1+ga;
+  const P=(R,a)=>[R*Math.cos(a),R*Math.sin(a)], f=p=>p[0].toFixed(2)+' '+p[1].toFixed(2);
+  const lg=(th+ga)>Math.PI?1:0;
+  const cutD=['M'+f(P(R1,a0))+' L'+f(P(R2,a0))+' A'+R2+' '+R2+' 0 '+lg+' 1 '+f(P(R2,a1g))+' L'+f(P(R1,a1g))+' A'+R1+' '+R1+' 0 '+lg+' 0 '+f(P(R1,a0))+' Z'];
+  const glueD=['M'+f(P(R1,a1))+' L'+f(P(R2,a1))+' A'+R2+' '+R2+' 0 0 1 '+f(P(R2,a1g))+' L'+f(P(R1,a1g))+' A'+R1+' '+R1+' 0 0 0 '+f(P(R1,a1))+' Z'];
+  const lg2=th>Math.PI?1:0, rc=R2-4, rbF=R1+s.inset*0.9;
+  const foldD=['M'+f(P(rc,a0))+' A'+rc+' '+rc+' 0 '+lg2+' 1 '+f(P(rc,a1)),'M'+f(P(rbF,a0))+' A'+rbF+' '+rbF+' 0 '+lg2+' 1 '+f(P(rbF,a1)),'M'+f(P(R1,a1))+' L'+f(P(R2,a1))];
+  let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  for(let i=0;i<=60;i++){const a=a0+(a1g-a0)*i/60;[R1,R2].forEach(R=>{const p=P(R,a);minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);});}
+  const rd=B0/2+10, cx=maxX+20+rd, cy=(minY+maxY)/2;
+  cutD.push('M'+(cx-rd)+' '+cy+' a'+rd+' '+rd+' 0 1 0 '+(2*rd)+' 0 a'+rd+' '+rd+' 0 1 0 '+(-2*rd)+' 0');
+  foldD.push('M'+(cx-B0/2)+' '+cy+' a'+(B0/2)+' '+(B0/2)+' 0 1 0 '+B0+' 0 a'+(B0/2)+' '+(B0/2)+' 0 1 0 '+(-B0)+' 0');
+  const mid=P((R1+R2)/2,Math.PI/2), gl=P((R1+R2)/2,a1+ga/2);
+  const labels=[[mid[0],mid[1],'PAREDE'],[cx,cy,'FUNDO'],[gl[0],gl[1],'COLA']];
+  return {cutD,glueD,foldD,labels,minX,maxX:cx+rd,minY:Math.min(minY,cy-rd),maxY:Math.max(maxY,cy+rd),
+    note:'Parede ≈ '+(maxX-minX).toFixed(0)+' × '+(maxY-minY).toFixed(0)+' mm · Fundo Ø '+(2*rd).toFixed(0)+' mm'};
+}
+function dieCaixa(){
+  const d=st.D.caixa, t=SUB[subKey()].t, g=0.8, lh=Math.min(d.H*0.3,70);
+  const cuts=[], folds=[], glue=[], labels=[];
+  const tray=(ox,oy,W,D,H,name)=>{
+    const tb=Math.min(25,H*0.45);
+    const o=(x,y)=>[ox+x,oy+y];
+    cuts.push([o(0,-H),o(W,-H),o(W+tb,-H+4),o(W+tb,-4),o(W,0),o(W+H,0),o(W+H,D),o(W,D),o(W+tb,D+4),o(W+tb,D+H-4),o(W,D+H),o(0,D+H),o(-tb,D+H-4),o(-tb,D+4),o(0,D),o(-H,D),o(-H,0),o(0,0),o(-tb,-4),o(-tb,-H+4),o(0,-H)]);
+    folds.push([o(0,0),o(W,0),o(W,D),o(0,D),o(0,0)]); folds.push([o(W,-H),o(W,0)]); folds.push([o(W,D),o(W,D+H)]); folds.push([o(0,D),o(0,D+H)]); folds.push([o(0,-H),o(0,0)]);
+    glue.push([o(W,-H),o(W+tb,-H+4),o(W+tb,-4),o(W,0)]); glue.push([o(W,D),o(W+tb,D+4),o(W+tb,D+H-4),o(W,D+H)]); glue.push([o(0,D),o(-tb,D+4),o(-tb,D+H-4),o(0,D+H)]); glue.push([o(0,-H),o(-tb,-H+4),o(-tb,-4),o(0,0)]);
+    labels.push([ox+W/2,oy+D/2,name]);
+    return {minX:ox-H,maxX:ox+W+H,minY:oy-H,maxY:oy+D+H};
+  };
+  const a=tray(0,0,d.W,d.D,d.H,'FUNDO');
+  const LW=d.W+2*g+2*t, LD=d.D+2*g+2*t;
+  const b=tray(a.maxX+30+lh,(d.D-LD)/2,LW,LD,lh,'TAMPA');
+  return {cuts,folds,glue,labels,minX:a.minX,maxX:b.maxX,minY:Math.min(a.minY,b.minY),maxY:Math.max(a.maxY,b.maxY),
+    note:'Fundo ≈ '+(a.maxX-a.minX).toFixed(0)+' × '+(a.maxY-a.minY).toFixed(0)+' mm · Tampa ≈ '+(b.maxX-b.minX).toFixed(0)+' × '+(b.maxY-b.minY).toFixed(0)+' mm'};
+}
+function openPoly(pts,skip){const p=pts.slice(0,-1);return p.slice(skip+1).concat(p.slice(0,skip+1));}
+function trayD(o,ox,oy,W,D,H,name,skip){
+  const tb=Math.min(25,H*0.45), q=(x,y)=>[ox+x,oy+y];
+  const pts=[q(0,-H),q(W,-H),q(W+tb,-H+4),q(W+tb,-4),q(W,0),q(W+H,0),q(W+H,D),q(W,D),q(W+tb,D+4),q(W+tb,D+H-4),q(W,D+H),q(0,D+H),q(-tb,D+H-4),q(-tb,D+4),q(0,D),q(-H,D),q(-H,0),q(0,0),q(-tb,-4),q(-tb,-H+4),q(0,-H)];
+  o.cuts.push(skip==null?pts:openPoly(pts,skip));
+  o.folds.push([q(0,0),q(W,0),q(W,D),q(0,D),q(0,0)],[q(W,-H),q(W,0)],[q(W,D),q(W,D+H)],[q(0,D),q(0,D+H)],[q(0,-H),q(0,0)]);
+  if(skip===0) o.folds.push([q(0,-H),q(W,-H)]); if(skip===10) o.folds.push([q(W,D+H),q(0,D+H)]);
+  o.glue.push([q(W,-H),q(W+tb,-H+4),q(W+tb,-4),q(W,0)],[q(W,D),q(W+tb,D+4),q(W+tb,D+H-4),q(W,D+H)],[q(0,D),q(-tb,D+4),q(-tb,D+H-4),q(0,D+H)],[q(0,-H),q(-tb,-H+4),q(-tb,-4),q(0,0)]);
+  o.labels.push([ox+W/2,oy+D/2,name]);
+  return {minX:ox-H,maxX:ox+W+H,minY:oy-H,maxY:oy+D+H};
+}
+function dieTrayLid(){
+  const m=st.model, d=st.D[m], t=SUB[subKey()].t, W=d.W, D=d.D, hw=d.H-t, Dl=D+t, fh=Math.min(hw*(m==='pizza'?0.7:0.75),45);
+  const o={cuts:[],folds:[],glue:[],labels:[]};
+  const a=trayD(o,0,0,W,D,hw,'FUNDO',0);
+  const y1=-hw-Dl, y2=y1-fh;
+  o.cuts.push([[0,-hw],[0,y2],[W,y2],[W,-hw]]); o.folds.push([[0,y1],[W,y1]]); o.labels.push([W/2,(-hw+y1)/2,'TAMPA'],[W/2,(y1+y2)/2,'ABA']);
+  if(m!=='pizza'&&st.visor){const mg=Math.min(W,D)*0.2; o.cuts.push([[mg,-hw-mg],[W-mg,-hw-mg],[W-mg,y1+mg],[mg,y1+mg],[mg,-hw-mg]]); o.labels.push([W/2,(-hw+y1)/2+Math.min(W,D)*0.08,'JANELA (PET)']);}
+  return Object.assign(o,{minX:a.minX,maxX:a.maxX,minY:y2,maxY:a.maxY});
+}
+function dieHamb(){
+  const d=st.D.hamb, hb=d.H/2, o={cuts:[],folds:[],glue:[],labels:[]};
+  const a=trayD(o,0,0,d.W,d.D,hb,'BASE',0), b=trayD(o,0,-(2*hb+d.D),d.W,d.D,hb,'TAMPA',10);
+  return Object.assign(o,{minX:a.minX,maxX:a.maxX,minY:b.minY,maxY:a.maxY,note:'Peça única (base + tampa) ≈ '+(a.maxX-a.minX).toFixed(0)+' × '+(a.maxY-b.minY).toFixed(0)+' mm. Paredes cônicas na montagem.'});
+}
+function dieStrip(){
+  const m=st.model, d=st.D[m], W=d.W, D=d.D, H=d.H, bag=m==='sacola', g=bag?20:12;
+  const x1=g,x2=g+W,x3=g+W+D,x4=g+2*W+D,x5=g+2*W+2*D, o={cuts:[],folds:[],glue:[],labels:[]};
+  [x1,x2,x3,x4].forEach(x=>o.folds.push([[x,0],[x,H]]));
+  o.cuts.push([[x5,0],[x5,H]]); o.cuts.push([[x1,0],[0,6],[0,H-6],[x1,H]]); o.glue.push([[x1,0],[0,6],[0,H-6],[x1,H]]);
+  const top=[];
+  for(let i=0;i<=200;i++){const x=x1+(x5-x1)*i/200; let y=0;
+    if(m==='batata'){ if(x<=x2){y=H*0.26*Math.sin(Math.PI*(x-x1)/W);} else if(x>=x3&&x<=x4){y=H*0.04*Math.sin(Math.PI*(x-x3)/W);} }
+    if(bag&&st.bagType==='sos'){const p=9,f=((x-x1)%p)/p; y=4.5*(f<.5?f*2:(1-f)*2);}
+    top.push([x,y]);}
+  o.cuts.push(top);
+  if(bag&&st.bagType!=='sos'){o.folds.push([[0,40],[x5,40]]); o.labels.push([x5/2,20,'DOBRA DE REFORÇO']);}
+  const bf=D*0.6+(bag?10:0);
+  [[x1,W],[x3,W]].forEach(([x,w])=>{o.cuts.push([[x,H],[x,H+bf],[x+w,H+bf],[x+w,H]]); o.folds.push([[x,H],[x+w,H]]);});
+  [[x2,D],[x4,D]].forEach(([x,w])=>{o.cuts.push([[x,H],[x+w*0.12,H+bf*0.8],[x+w*0.88,H+bf*0.8],[x+w,H]]); o.folds.push([[x,H],[x+w,H]]);});
+  if(bag){[x2,x4].forEach(x=>{const cx=x+D/2; o.folds.push([[cx,0],[cx,H]],[[x,H],[cx,H-D/2]],[[x+D,H],[cx,H-D/2]]);});}
+  o.labels.push([x1+W/2,H/2,'FRENTE'],[x2+D/2,H/2,'LATERAL'],[x3+W/2,H/2,'COSTAS'],[x4+D/2,H/2,'LATERAL'],[g/2,H/2,'COLA',-90]);
+  return Object.assign(o,{minX:0,maxX:x5,minY:0,maxY:H+bf});
+}
+function dieline(){
+  const m=st.model;
+  renderDie(m==='cartucho'?dieCart():m==='caixa'?dieCaixa():isCyl(m)?dieCyl():m==='hamb'?dieHamb():(m==='batata'||m==='sacola')?dieStrip():dieTrayLid());
+}
+
+/* ---------- panel ---------- */
+function capacityText(){
+  const m=st.model, d=st.D[m];
+  const n=st.size[m];
+  if(isCyl(m)) return n?(n+' ml (até a borda ≈ '+fmtMl(cylVol(m,d))+')'):'≈ '+fmtMl(cylVol(m,d));
+  if(m==='caixa') return n?(n+' L (volume interno ≈ '+fmtL(boxVol(d))+')'):'≈ '+fmtL(boxVol(d));
+  return '';
+}
+function summary(){
+  const m=st.model, d=st.D[m]; let t;
+  if(m==='cartucho') t='Cartucho · '+LABELS.closure[st.closure]+'\n'+d.W+' × '+d.D+' × '+d.H+' mm (L × P × A)\n'+matLabel()+'\nAcabamento: '+LABELS.fin[st.fin];
+  else if(m==='caixa') t='Caixa de açaí com tampa (tampa e fundo) · '+capacityText()+'\n'+d.W+' × '+d.D+' × '+d.H+' mm (L × P × A)\n'+matLabel()+'\nAcabamento: '+LABELS.fin[st.fin];
+  else if(m==='sacola') t=(st.bagType==='sos'?'Sacola delivery (sem alça, topo serrilhado)':'Sacola com alça '+({torcido:'de papel torcido',chato:'de papel chata',cordao:'de cordão '+{black:'preto',white:'branco',yellow:'amarelo',pink:'rosa'}[st.cord]+' com ilhós '+{gold:'dourado',silver:'prateado',black:'preto'}[st.eyelet]}[st.handle]))+'\n'+d.W+' × '+d.D+' × '+d.H+' mm (L × P × A)\n'+matLabel()+'\nAcabamento: '+LABELS.fin[st.fin];
+  else if(!isCyl(m)) t=NAMES[m]+((m==='sushi'||m==='salgado')&&st.visor?' · com visor (janela)':'')+'\n'+d.W+' × '+d.D+' × '+d.H+' mm (L × P × A)\n'+matLabel()+'\nAcabamento: '+LABELS.fin[st.fin];
+  else t=(m==='copo'?'Copo de papel':'Pote de papel para açaí e sorvete')+' · '+capacityText()+'\nØ boca '+d.T+' mm · Ø fundo '+d.B+' mm · altura '+d.H+' mm\n'+matLabel()+' · '+LABELS.fin[st.fin]+'\n'+(st.lid?(m==='copo'?'Com tampa '+(st.lidColor==='black'?'preta':'branca'):'Com tampa de papel impressa'):'Sem tampa');
+  if(!isCyl(m)){const fx=[]; if(st.fx.hot)fx.push('hot stamping '+{gold:'dourado',silver:'prateado',copper:'cobre'}[st.foil]); if(st.fx.spot)fx.push('verniz localizado'); if(st.fx.relevo)fx.push('alto relevo'); if(fx.length)t+='\nEfeitos no logo: '+fx.join(' + ');}
+  t+='\nQuantidade: '+st.q.toLocaleString('pt-BR')+(st.q===20000?'+':'')+' un.';
+  const el=$('sum'); el.textContent=''; t.split('\n').forEach((l,i)=>{if(i)el.appendChild(document.createElement('br'));el.appendChild(document.createTextNode(l));});
+  $('wa').href='https://wa.me/?text='+encodeURIComponent('Olá, MXM! Montei esta embalagem no configurador e quero um orçamento:\n\n'+t);
+  $('capVal').textContent=capacityText();
+  return t;
+}
+function syncInputs(){
+  const m=st.model, d=st.D[m];
+  if(isCyl(m)){ ['T','B','H'].forEach(k=>{$('rc'+k).value=d[k];$('nc'+k).value=d[k];}); }
+  else { const R=RANGES[m]; ['W','D','H'].forEach(k=>{['rb','nb'].forEach(p=>{const el=$(p+k);el.min=R[k][0];el.max=R[k][1];el.value=d[k];});}); }
+}
+function buildSizes(){
+  const m=st.model, wrap=$('sizes'); wrap.innerHTML='';
+  if(!SIZES[m]) return;
+  SIZES[m].forEach(v=>{const b=document.createElement('button');b.className='chip';b.textContent=m==='caixa'?(v+' L'):(v+' ml');b.setAttribute('aria-pressed',st.size[m]===v);
+    b.addEventListener('click',()=>{st.size[m]=v; st.D[m]=m==='caixa'?solveBox(v):solveCyl(m,v); syncInputs(); markSizes(); framing=true; refresh();});wrap.appendChild(b);});
+}
+function markSizes(){const m=st.model; [...$('sizes').children].forEach((b,i)=>b.setAttribute('aria-pressed',SIZES[m]&&SIZES[m][i]===st.size[m]));}
+function updatePanel(){
+  const m=st.model, cyl=isCyl(m);
+  document.querySelectorAll('[data-for]').forEach(s=>s.hidden=!s.dataset.for.split(' ').includes(m));
+  $('dimsBox').hidden=cyl; $('dimsCyl').hidden=!cyl; $('boxPresets').hidden=m!=='cartucho';
+  $('dimTitle').textContent=cyl?'Medidas':'Medidas externas';
+  $('capBox').hidden=!(isCyl(m)||m==='caixa');
+  $('papers').hidden=!MICRO_OK.includes(m); $('cylMatTip').hidden=!cyl;
+  $('cartaoOpts').hidden=paperEff()!=='cartao'; $('microOpts').hidden=paperEff()==='cartao';
+  $('foilRow').hidden=!st.fx.hot; $('handleRow').hidden=st.bagType==='sos'; $('cordRow').hidden=!(st.bagType!=='sos'&&st.handle==='cordao');
+  document.querySelectorAll('[data-family]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.family===famOf(m)));
+  document.querySelectorAll('[data-model]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.model===m));
+  $('lidColorRow').hidden=m!=='copo';
+  $('lidTip').textContent=m==='copo'?'Tampa plástica com bico, para bebidas quentes e frias.':'Tampa de papel com a mesma impressão do pote.';
+  $('btnOpen').style.display=(HINGED.includes(m)||m==='caixa')?'':'none';
+  $('btnOpen').querySelector('.lbl').textContent=st.open?'Fechar tampa':'Abrir tampa'; $('btnOpen').setAttribute('aria-pressed',st.open);
+  document.querySelector('[data-view="edge"]').style.display=(!cyl&&subKey()!=='cartao')?'':'none';
+  document.querySelectorAll('[data-lid]').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.lid==='1')===st.lid));
+  buildSizes(); syncInputs();
+}
+function refresh(){summary(); if(dieOn)dieline();}
+function setDim(k,v,cyl){
+  const m=st.model, r=$((cyl?'rc':'rb')+k), n=$((cyl?'nc':'nb')+k);
+  v=Math.round(Math.min(+r.max,Math.max(+r.min,+v||+r.min)));
+  st.D[m][k]=v;
+  if(cyl){ if(k==='B'&&v>st.D[m].T-2){st.D[m].B=st.D[m].T-2;} if(k==='T'&&st.D[m].B>v-2){st.D[m].B=v-2;} }
+  syncInputs(); st.size[m]=null; markSizes(); framing=true; refresh();
+}
+['W','D','H'].forEach(k=>{ $('rb'+k).addEventListener('input',e=>setDim(k,e.target.value,false)); $('nb'+k).addEventListener('change',e=>setDim(k,e.target.value,false)); });
+['T','B','H'].forEach(k=>{ $('rc'+k).addEventListener('input',e=>setDim(k,e.target.value,true)); $('nc'+k).addEventListener('change',e=>setDim(k,e.target.value,true)); });
+document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>{const [w,d,h]=b.dataset.preset.split(',').map(Number);st.D.cartucho={W:w,D:d,H:h};syncInputs();framing=true;refresh();}));
+function group(sel,attr,fn){document.querySelectorAll(sel).forEach(b=>b.addEventListener('click',()=>{if(b.disabled)return;document.querySelectorAll(sel).forEach(x=>x.setAttribute('aria-pressed',x===b));fn(b.dataset[attr]);refresh();}));}
+function selectModel(v){
+  st.model=v; if(famOf(v)==='delivery') st.last.delivery=v;
+  st.open=false; openness=0; lidT=lidTarget(); lidClosing=true; cylKey=''; hambKey=''; friesKey=''; trayKey=''; bagKey='';
+  applySubstrate(); updatePanel(); framing=true; refresh(); if(dieOn)dieline(); else setView('34');
+}
+document.querySelectorAll('[data-family]').forEach(b=>b.addEventListener('click',()=>{const f=b.dataset.family; selectModel(f==='delivery'?st.last.delivery:FAM[f][0]);}));
+document.querySelectorAll('[data-model]').forEach(b=>b.addEventListener('click',()=>selectModel(b.dataset.model)));
+group('[data-visor]','visor',v=>{st.visor=v==='1'; trayKey=''; if(!dieOn)setView('34');});
+group('[data-bag]','bag',v=>{st.bagType=v; paintInfo(); bagInfoMat.map.needsUpdate=true; updatePanel(); framing=true;});
+group('[data-handle]','handle',v=>{st.handle=v; updatePanel(); framing=true;});
+group('[data-cord]','cord',v=>{st.cord=v;});
+group('[data-eyelet]','eyelet',v=>{st.eyelet=v;});
+document.querySelectorAll('[data-fx]').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.fx; st.fx[k]=!st.fx[k]; b.setAttribute('aria-pressed',st.fx[k]); applyEffects(); updatePanel(); refresh(); if(!dieOn&&st.fx[k])setView('front');}));
+group('[data-foil]','foil',v=>{st.foil=v; applyEffects();});
+group('[data-closure]','closure',v=>{st.closure=v;paintBottom();paintInfo();infoMat.map.needsUpdate=true; if(v!=='tuck'&&!dieOn){setView('bottom');}});
+group('[data-paper]','paper',v=>{st.paper=v;applySubstrate();updatePanel(); if(!dieOn)setView(v==='micro'?'edge':'34');});
+group('[data-color]','color',v=>{st.color=v;applySubstrate();});
+group('[data-flute]','flute',v=>{st.flute=v;applySubstrate(); if(!dieOn)setView('edge');});
+group('[data-faces]','faces',v=>{st.faces=v;applySubstrate();});
+group('[data-fin]','fin',v=>{st.fin=v;applyFinish();});
+group('[data-q]','q',v=>{st.q=+v;});
+group('[data-lid]','lid',v=>{const on=v==='1'; if(on&&!st.lid){lidT=0;} st.lid=on; lidClosing=on; framing=true; if(on&&!dieOn&&!viewAnim)setView('34');});
+group('[data-lidc]','lidc',v=>{st.lidColor=v;cylKey='';});
+$('btnOpen').addEventListener('click',e=>{st.open=!st.open; lidClosing=!st.open; e.currentTarget.setAttribute('aria-pressed',st.open);e.currentTarget.querySelector('.lbl').textContent=st.open?'Fechar tampa':'Abrir tampa'; framing=true;});
+$('btnDims').addEventListener('click',e=>{st.dims=!st.dims;e.currentTarget.setAttribute('aria-pressed',st.dims);});
+$('btnRot').addEventListener('click',()=>{st.rot=!st.rot;controls.autoRotate=st.rot;$('btnRot').setAttribute('aria-pressed',st.rot);viewAnim=null;});
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{if(dieOn)showTab(false);setView(b.dataset.view);}));
+function showTab(die){dieOn=die;$('tab3d').setAttribute('aria-selected',!die);$('tabDie').setAttribute('aria-selected',die);$('dieWrap').classList.toggle('on',die);$('toolbar').style.display=die?'none':'flex';$('hint').style.display=die?'none':'';if(die)dieline();}
+$('tab3d').addEventListener('click',()=>showTab(false));
+$('tabDie').addEventListener('click',()=>showTab(true));
+$('copy').addEventListener('click',async e=>{const b=e.currentTarget;try{await navigator.clipboard.writeText(summary());b.textContent='Copiado';}catch(err){b.textContent='Não foi possível copiar';}setTimeout(()=>b.textContent='Copiar especificação',1800);});
+
+/* ---------- start ---------- */
+resize(); applySubstrate(); applyFinish(); updatePanel(); summary(); setView('34'); viewAnim=null;
+camera.position.copy(VIEWS['34'].clone().normalize().multiplyScalar(desiredDist())).add(new THREE.Vector3(0,bbox().H/2*S,0));
+controls.target.set(0,bbox().H/2*S,0);
+if(document.fonts&&document.fonts.load){document.fonts.load('800 100px "Plus Jakarta Sans"').then(()=>{applySubstrate();}).catch(()=>{});}
+requestAnimationFrame(tick);
+if(location.hash==='#planificacao')showTab(true);
+window.__mxm={st,summary,selectModel,snapshot:()=>{renderer.render(scene,camera);return canvas.toDataURL('image/jpeg',0.85);}};
+})();
+</script>
+<style>
+.qmodal{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px 14px}
+.qmodal[hidden]{display:none}
+.qbox{width:100%;max-width:680px;background:#151515;border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:26px;display:flex;flex-direction:column;gap:18px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.qhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.qhead h2{margin:4px 0 0;font-size:22px;letter-spacing:-.3px}
+.qx{flex:none;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:transparent;color:#fff;font-size:20px;cursor:pointer}
+.qsteps{display:flex;gap:8px;font-size:12px;font-family:'JetBrains Mono',monospace;color:#8f8f8f}
+.qsteps span{padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12)}
+.qsteps span.on{background:var(--y);color:#0D0D0D;border-color:var(--y);font-weight:700}
+.qgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.qf{display:flex;flex-direction:column;gap:6px}
+.qf.full{grid-column:1/-1}
+.qf label{font-size:13px;font-weight:600;color:#DADADA}
+.qf label i{font-style:normal;color:var(--y)}
+.qf input,.qf textarea{min-height:46px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.2);background:#0d0d0d;color:#fff;font-size:15px;font-family:inherit;outline:none}
+.qf textarea{min-height:90px;resize:vertical}
+.qf input:focus,.qf textarea:focus{border-color:var(--y)}
+.qf .err{font-size:12px;color:#FF8A8A;min-height:0}
+.qspec{font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.6;color:#DADADA;background:#0b0b0b;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:12px 14px;white-space:pre-line}
+.qrow{display:flex;flex-wrap:wrap;gap:10px}
+.qrow .cta,.qrow .ghost{flex:1 1 220px}
+.qshot{width:100%;border-radius:16px;border:1px solid rgba(255,255,255,.1);background:#0d0d0d;display:block}
+.qid{font-family:'JetBrains Mono',monospace;color:var(--y);font-weight:700}
+.qnote{font-size:12.5px;color:#9a9a9a;line-height:1.5;margin:0}
+@media (max-width:600px){.qgrid{grid-template-columns:1fr}.qbox{padding:20px}}
+</style>
+
+<div class="qmodal" id="qModal" hidden role="dialog" aria-modal="true" aria-labelledby="qTitle">
+  <div class="qbox">
+    <form id="qForm" novalidate style="display:flex;flex-direction:column;gap:18px">
+      <div class="qhead">
+        <div>
+          <div class="qsteps"><span>1 Embalagem</span><span class="on">2 Seus dados</span><span>3 Pedido</span></div>
+          <h2 id="qTitle">Quase lá. Para quem é o orçamento?</h2>
+        </div>
+        <button type="button" class="qx" data-qclose aria-label="Fechar">×</button>
+      </div>
+      <div class="qgrid">
+        <div class="qf"><label for="qName">Seu nome <i>*</i></label><input id="qName" autocomplete="name" required><span class="err" id="eName"></span></div>
+        <div class="qf"><label for="qCompany">Empresa / marca</label><input id="qCompany" autocomplete="organization"></div>
+        <div class="qf"><label for="qPhone">WhatsApp com DDD <i>*</i></label><input id="qPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(81) 9 0000-0000" required><span class="err" id="ePhone"></span></div>
+        <div class="qf"><label for="qEmail">E-mail</label><input id="qEmail" type="email" autocomplete="email"><span class="err" id="eEmail"></span></div>
+        <div class="qf"><label for="qCity">Cidade / UF</label><input id="qCity" autocomplete="address-level2" placeholder="Recife / PE"></div>
+        <div class="qf"><label for="qDate">Para quando precisa?</label><input id="qDate" type="date"></div>
+        <div class="qf full"><label>Arte da embalagem</label>
+          <div class="chips" id="qArt">
+            <button type="button" class="chip" data-art="Já tenho a arte pronta" aria-pressed="true">Já tenho a arte pronta</button>
+            <button type="button" class="chip" data-art="Preciso de criação da arte" aria-pressed="false">Preciso de criação</button>
+            <button type="button" class="chip" data-art="Ainda não sei" aria-pressed="false">Ainda não sei</button>
+          </div>
+        </div>
+        <div class="qf full"><label for="qObs">Observações</label><textarea id="qObs" placeholder="Ex.: quero a logo em hot stamping dourado, entrega em duas remessas…"></textarea></div>
+      </div>
+      <div class="qf"><label>Embalagem escolhida</label><div class="qspec" id="qSpec"></div></div>
+      <div class="qrow">
+        <button type="button" class="ghost" data-qclose>Voltar e ajustar</button>
+        <button type="submit" class="cta">Gerar meu pedido de orçamento</button>
+      </div>
+    </form>
+
+    <div id="qDone" hidden style="display:flex;flex-direction:column;gap:16px">
+      <div class="qhead">
+        <div>
+          <div class="qsteps"><span>1 Embalagem</span><span>2 Seus dados</span><span class="on">3 Pedido</span></div>
+          <h2>Pedido <span class="qid" id="qId"></span> pronto</h2>
+        </div>
+        <button type="button" class="qx" data-qclose aria-label="Fechar">×</button>
+      </div>
+      <img class="qshot" id="qShot" alt="Imagem da embalagem configurada em 3D">
+      <div class="qspec" id="qText"></div>
+      <div class="qrow">
+        <a class="cta" id="qWa" href="#">Enviar pedido para a MXM no WhatsApp</a>
+        <button type="button" class="ghost" id="qCopy">Copiar pedido</button>
+      </div>
+      <div class="qrow">
+        <button type="button" class="ghost" id="qEdit">Editar meus dados</button>
+        <button type="button" class="ghost" data-qclose>Montar outra embalagem</button>
+      </div>
+      <p class="qnote">Ao enviar, a conversa abre no WhatsApp com tudo preenchido. Se tiver a arte, mande o arquivo na mesma conversa.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+const MXM_WHATSAPP = ''; // número da MXM com DDI e DDD, só dígitos. Ex.: '5581999999999'
+const M = window.__mxm, $ = id => document.getElementById(id);
+const modal = $('qModal');
+const routes = {cartucho:'cartucho', delivery:'delivery', sacolas:'sacola', copo:'copo', pote:'pote', 'caixa-acai':'caixa'};
+function route(){const h=location.hash.slice(1); const f=routes[h]; if(f){const b=document.querySelector('[data-family="'+f+'"]'); if(b) b.click();}}
+window.addEventListener('hashchange',route); route();
+let art='Já tenho a arte pronta';
+document.querySelectorAll('[data-art]').forEach(b=>b.addEventListener('click',()=>{art=b.dataset.art;document.querySelectorAll('[data-art]').forEach(x=>x.setAttribute('aria-pressed',x===b));}));
+const F=['qName','qCompany','qPhone','qEmail','qCity'];
+try{const saved=JSON.parse(localStorage.getItem('mxm_quote_contact')||'{}');F.forEach(k=>{if(saved[k])$(k).value=saved[k];});}catch(e){}
+function open(){ $('qSpec').textContent=M.summary(); $('qForm').hidden=false; $('qDone').hidden=true; modal.hidden=false; setTimeout(()=>$('qName').focus(),30); }
+function close(){ modal.hidden=true; $('goQuote').focus(); }
+$('goQuote').addEventListener('click',open);
+document.querySelectorAll('[data-qclose]').forEach(b=>b.addEventListener('click',close));
+modal.addEventListener('click',e=>{if(e.target===modal)close();});
+modal.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+function fmtDate(v){if(!v)return 'a combinar';const [y,m,d]=v.split('-');return d+'/'+m+'/'+y;}
+$('qForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const name=$('qName').value.trim(), phone=$('qPhone').value.replace(/\D/g,''), email=$('qEmail').value.trim();
+  let ok=true;
+  $('eName').textContent=name?'':'Digite seu nome.'; if(!name)ok=false;
+  $('ePhone').textContent=phone.length>=10?'':'Digite o WhatsApp com DDD.'; if(phone.length<10)ok=false;
+  $('eEmail').textContent=(!email||/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))?'':'Confira o e-mail.'; if(email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))ok=false;
+  if(!ok){ (name?(phone.length>=10?$('qEmail'):$('qPhone')):$('qName')).focus(); return; }
+  try{const o={};F.forEach(k=>o[k]=$(k).value);localStorage.setItem('mxm_quote_contact',JSON.stringify(o));}catch(err){}
+  const d=new Date(), id='MXM-'+String(d.getFullYear()).slice(2)+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
+  const lines=['Pedido de orçamento '+id,'',
+    'CLIENTE','Nome: '+name, $('qCompany').value.trim()?'Empresa: '+$('qCompany').value.trim():null, 'WhatsApp: '+$('qPhone').value.trim(), email?'E-mail: '+email:null,
+    $('qCity').value.trim()?'Cidade: '+$('qCity').value.trim():null, 'Prazo desejado: '+fmtDate($('qDate').value), 'Arte: '+art,
+    $('qObs').value.trim()?'Observações: '+$('qObs').value.trim():null, '', 'EMBALAGEM', M.summary()].filter(x=>x!==null);
+  const text=lines.join('\n');
+  $('qId').textContent=id; $('qText').textContent=text;
+  try{$('qShot').src=M.snapshot();}catch(err){$('qShot').hidden=true;}
+  $('qWa').href='https://wa.me/'+MXM_WHATSAPP+'?text='+encodeURIComponent('Olá, MXM! Montei minha embalagem no configurador 3D.\n\n'+text);
+  $('qForm').hidden=true; $('qDone').hidden=false; $('qWa').focus();
+});
+$('qEdit').addEventListener('click',()=>{$('qDone').hidden=true;$('qForm').hidden=false;$('qName').focus();});
+$('qCopy').addEventListener('click',async e=>{const b=e.currentTarget;try{await navigator.clipboard.writeText($('qText').textContent);b.textContent='Copiado';}catch(err){b.textContent='Não foi possível copiar';}setTimeout(()=>b.textContent='Copiar pedido',1800);});
+})();
+</script>
+
+</body>
+</html>
