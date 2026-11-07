@@ -262,6 +262,12 @@ body.intro-on{overflow:hidden}
 const el=document.getElementById('intro'), sk=document.getElementById('introSkip');
 if(!el) return;
 if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){el.classList.add('done');sk.classList.add('done');return;}
+// intro: first visit of the session, or when the visitor reloads the page
+let seen=false; try{seen=sessionStorage.getItem('mxm_intro')==='1';}catch(e){}
+const navE=(performance.getEntriesByType&&performance.getEntriesByType('navigation')[0])||null;
+const isReload=navE?navE.type==='reload':false;
+if(seen&&!isReload){el.classList.add('done');sk.classList.add('done');return;}
+try{sessionStorage.setItem('mxm_intro','1');}catch(e){}
 document.body.classList.add('intro-on');
 // logo layout measured from the real font, so it is always centred
 function layoutLogo(){
